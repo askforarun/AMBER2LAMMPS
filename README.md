@@ -1,7 +1,7 @@
 # AMBER2LAMMPS
 python utility code to create LAMMPS data file
 
-chek main.py which calls pm2lmp. 
+chek main.py which calls pmd2lmp. 
 
 You need to have antechamber, mdanalysis and RdKit (if you want use smiles) installed. 
 
