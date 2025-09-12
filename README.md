@@ -1,6 +1,12 @@
 # AMBER2LAMMPS
 python utility code to create LAMMPS data file
 
+chek main.py which calls pm2lmp. 
+
+You need to have antechamber, mdanalysis and RdKit (if you want use smiles) installed. 
+
+Example is for short PVA (polymer) chain.
+
 Usage:
 
 pmd2lmp(name)
