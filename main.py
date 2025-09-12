@@ -180,7 +180,7 @@ def pmd2lmp(name):
         f.write("include parm.{}\n".format(name))
     
 
-
+# begin generating name.mol2, name.frcmod, name.top
 name='PVA' # name of the compound 
 
 # if you know the smiles string if not comment the following three lines and make sure name.pdb is in the current folder 
@@ -215,6 +215,7 @@ with open("tleap.in","w") as f:
 
 cmd1="tleap -f tleap.in"
 subprocess.run(cmd1, shell=True)
+# end of code for generating name.mol2, name.frcmod, name.top
 
 #Calling the function 
 pmd2lmp(name)
