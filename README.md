@@ -17,4 +17,6 @@ lmp_png < in.name
 
 #output: data.name, parm.name and in.name  
 
-#name is the name of mol2, frcmod and top file
+#name is the name of mol2, frcmod and top file and these three files should be in the same folder
+
+#main.py generates the three files 
