@@ -1,7 +1,9 @@
 # AMBER2LAMMPS
 python utility code to create LAMMPS data file
 
-chek main.py which calls pmd2lmp. 
+ pmd2lmp is the function that generates data file and input file 
+
+ simply run main.py. Its that simple 
 
 You need to have antechamber, mdanalysis and RdKit (if you want use smiles) installed. 
 
