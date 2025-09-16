@@ -4,6 +4,7 @@ import subprocess
 import os
 from amber2lammps import amber2lammps
 
+#This file generates mol2, frcmod and top file
 
 name='PVA' # name of the compound 
 
