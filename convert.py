@@ -2,16 +2,16 @@
 import MDAnalysis as mda
 import subprocess 
 import os
-from amber2lammps import amber2lammps
+from amber_to_lammps import amber2lammps
 
 #This file generates mol2, frcmod and top file
 
-name='PVA' # name of the compound 
+name='epon' # name of the compound 
 
 # if you know the smiles string if not comment the following three lines and make sure name.pdb is in the current folder 
-smiles='CCC(O)CC(O)CC(C)O'
-u = mda.Universe.from_smiles('{}'.format(smiles))
-u.atoms.write('{}.pdb'.format(name))
+# smiles='CCC(O)CC(O)CC(C)O'
+# u = mda.Universe.from_smiles('{}'.format(smiles))
+# u.atoms.write('{}.pdb'.format(name))
 
 
 
@@ -35,15 +35,15 @@ with open("tleap.in","w") as f:
     f.write("SUS = loadmol2 {}.mol2\n".format(name)) 
     f.write("check SUS\n")
     f.write("loadamberparams {}.frcmod\n".format(name))
-    f.write("saveamberparm SUS {}.top {}.crd\n".format(name,name))
+    f.write("saveamberparm SUS {}.prmtop {}.crd\n".format(name,name))
     f.write("quit")
 
 cmd1="tleap -f tleap.in"
 subprocess.run(cmd1, shell=True)
 
 #Calling the function 
-amber2lammps(name)
 
+amber2lammps("epon.prmtop","epon.mol2","epon.frcmod")
 
 
 
