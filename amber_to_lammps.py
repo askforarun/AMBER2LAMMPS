@@ -1,9 +1,10 @@
 
 import parmed as pmd
 import numpy as np
+import sys
 
 #The main code that writes LAMMPS input file and data file
-def amber2lammps(ars):
+def amber2lammps(top,mol2,frcmod):
     AmberParm=pmd.amber.AmberParm
     printBonds=pmd.tools.actions.printBonds
     printAngles=pmd.tools.actions.printAngles
@@ -13,14 +14,14 @@ def amber2lammps(ars):
     #output: data.name, parm.name and in.name  
     #name is the name of mol2, frcmod and top file
 
-    with open("data.{}".format(name), "w") as f:
+    with open("data.lammps", "w") as f:
         f.write("LAMMS data file from parmed\n\n")
 
-    with open("parm.{}".format(name), "w") as f:
-        f.write("# force field parameters for {}\n\n".format(name))
+    with open("parm.lammps", "w") as f:
+        f.write("# force field parameters for {}\n\n")
 
     
-    parm = AmberParm('{}.top'.format(name))
+    parm = AmberParm(top)
     natoms=len(parm.atoms)
 
     Bonds=printBonds(parm,"@1-{}".format(natoms))
@@ -38,7 +39,7 @@ def amber2lammps(ars):
 
     atype={}
     mass=[]
-    with open("{}.frcmod".format(name)) as f:
+    with open(frcmod) as f:
         for line in f:
             if "MASS" in line:
                 for i,line_1 in enumerate(f):
@@ -57,7 +58,7 @@ def amber2lammps(ars):
     z=[]
 
     charges=[]
-    with open("{}.mol2".format(name)) as f: 
+    with open(mol2) as f: 
         for line in f:
             if "ATOM" in line:
                 for i,line_1 in enumerate(f):
@@ -78,7 +79,7 @@ def amber2lammps(ars):
     zlo=np.min(z)-buffer
     zhi=np.max(z)+buffer
 
-    with open("data.{}".format(name), "a") as f:
+    with open("data.lammps", "a") as f:
         f.write("{} atoms \n".format(natoms))
         f.write("{} atom types \n".format(len(atype)))
         f.write("{} bonds \n".format(len(parm.bonds)))
@@ -96,24 +97,24 @@ def amber2lammps(ars):
 
         f.write("\nAtoms\n\n")
                 
-    if np.sum(charges) >= 0:
-        charges=charges - (abs(np.sum(charges))/len(charges))
-    elif np.sum(charges) < 0:
-        charges=charges + (abs(np.sum(charges))/len(charges))
+    # if np.sum(charges) >= 0:
+    #     charges=charges - (abs(np.sum(charges))/len(charges))
+    # elif np.sum(charges) < 0:
+    #     charges=charges + (abs(np.sum(charges))/len(charges))
 
-    with open("{}.frcmod".format(name)) as f:
+    with open(frcmod) as f:
         for line in f:
             if "NONBON" in line:
                 for i,line_1 in enumerate(f):
                     if line_1.split():
-                        with open("parm.{}".format(name), "a") as flammps:
+                        with open("parm.lammps", "a") as flammps:
                             flammps.write("pair_coeff {} {} {} {} # {}\n".format(i+1,i+1,line_1.split()[2],0.890898718140339*2*float(line_1.split()[1]),line_1.split()[0])) 
 
 
-    with open("{}.mol2".format(name)) as f:  
+    with open(mol2) as f:  
         for line in f:
             if "ATOM" in line:
-                with open("data.{}".format(name), "a") as flammps:
+                with open("data.lammps", "a") as flammps:
                     for i,line_1 in enumerate(f):
                         if "BOND" in line_1:
                             break
@@ -122,62 +123,62 @@ def amber2lammps(ars):
                 break
 
     i=0
-    with open("data.{}".format(name), "a") as flammps:
+    with open("data.lammps", "a") as flammps:
         flammps.write("\nBonds \n\n")
         with open("bonds.txt") as f:
             for line in f:
                 if "Atom" not in line and line.split():
                     flammps.write("{} {} {} {}\n".format(i+1,i+1,int(line.split()[0]),int(line.split()[4])))
-                    with open("parm.{}".format(name), "a") as flammpsparm:
+                    with open("parm.lammps", "a") as flammpsparm:
                         flammpsparm.write("bond_coeff {} {} {}\n".format(i+1,line.split()[9],line.split()[8]))
                     i=i+1
 
 
     i=0
-    with open("data.{}".format(name), "a") as flammps:
+    with open("data.lammps", "a") as flammps:
         flammps.write("\nAngles \n\n")
         with open("angles.txt") as f:
             for line in f:
                 if "Atom" not in line and line.split():
                     flammps.write("{} {} {} {} {}\n".format(i+1,i+1,int(line.split()[0]),int(line.split()[4]),int(line.split()[8])))
-                    with open("parm.{}".format(name), "a") as flammpsparm:
+                    with open("parm.lammps", "a") as flammpsparm:
                         flammpsparm.write("angle_coeff {} {} {}\n".format(i+1,line.split()[12],line.split()[13]))
                     i=i+1
 
     i=0
-    with open("data.{}".format(name), "a") as flammps:
+    with open("data.lammps", "a") as flammps:
         flammps.write("\nDihedrals \n\n")
         with open("dihedrals.txt") as f:
             for line in f:
                 if "Atom" not in line and line.split():
                     if str(line.split()[0])=='M' or str(line.split()[0])=='I':
                         flammps.write("{} {} {} {} {} {}\n".format(i+1,i+1,int(line.split()[1]),int(line.split()[5]),int(line.split()[9]),int(line.split()[13])))
-                        with open("parm.{}".format(name), "a") as flammpsparm:
+                        with open("parm.lammps", "a") as flammpsparm:
                             flammpsparm.write("dihedral_coeff {} 1 {} {} {}\n".format(i+1,line.split()[17],int(float(line.split()[18])),line.split()[19]))
                         i=i+1
                     else:
                         flammps.write("{} {} {} {} {} {}\n".format(i+1,i+1,int(line.split()[0]),int(line.split()[4]),int(line.split()[8]),int(line.split()[12])))
-                        with open("parm.{}".format(name), "a") as flammpsparm:
+                        with open("parm.lammps", "a") as flammpsparm:
                             flammpsparm.write("dihedral_coeff {} 1 {} {} {}\n".format(i+1,line.split()[16],int(float(line.split()[17])),line.split()[18]))
                         i=i+1
 
-    with open("in.{}".format(name), "w") as f:
+    with open("in.lammps", "w") as f:
         f.write("units real\n")
         f.write("dimension 3\n")
         f.write("boundary p p p\n")
         f.write("atom_style full\n")
-        f.write("read_data data.{}\n".format(name))
-        f.write("pair_style      lj/cut/coul/long 10\n")
-        f.write("kspace_style    pppm 1.0e-4\n")
-        f.write("pair_modify     mix arithmetic tail yes\n")
+        f.write("read_data data.lammps\n")
+        f.write("pair_style      lj/cut/coul/long 9 9\n")
+        f.write("kspace_style    pppm 1.0e-8\n")
+        f.write("pair_modify     tail yes\n")
         f.write("bond_style      harmonic\n")
         f.write("angle_style      harmonic\n")
         f.write("dihedral_style    fourier\n")
-        f.write("special_bonds   amber\n")
-        f.write("include parm.{}\n".format(name))
+        f.write("special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.83333333\n")
+        f.write("include parm.lammps\n")
+        f.write("thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe\n")
+        f.write("run 0")
     
-
-
 
 
 
