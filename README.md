@@ -51,5 +51,5 @@ My code:
  2.3161274      6.0940126      12.475827      0             -9.7069268      9.9917113      97.869973     -117.56861     -0.0043506337   11.17904   
 
 
-Before check make sure the box size is the same in the data file 
+Before checking make sure the box size is the same in the data file 
 
