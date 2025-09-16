@@ -53,3 +53,8 @@ My code:
 
 Before checking make sure the box size is the same in the data file 
 
+For completeness I have provided the files obtained from intermol 
+
+epon_converted.input
+
+epon_converted.lmp
