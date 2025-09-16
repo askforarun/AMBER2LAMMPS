@@ -6,9 +6,9 @@ from amber_to_lammps import amber2lammps
 
 #This file generates mol2, frcmod and top file
 
-name='epon' # name of the compound 
+name='epon' # name of the pdb file
 
-# if you know the smiles string if not comment the following three lines and make sure name.pdb is in the current folder 
+# if you know the smiles strings 
 # smiles='CCC(O)CC(O)CC(C)O'
 # u = mda.Universe.from_smiles('{}'.format(smiles))
 # u.atoms.write('{}.pdb'.format(name))
