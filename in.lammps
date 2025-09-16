@@ -1,0 +1,15 @@
+units real
+dimension 3
+boundary p p p
+atom_style full
+read_data data.lammps
+pair_style      lj/cut/coul/long 9 9
+kspace_style    pppm 1.0e-8
+pair_modify     tail yes
+bond_style      harmonic
+angle_style      harmonic
+dihedral_style    fourier
+special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.83333333
+include parm.lammps
+thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe
+run 0
