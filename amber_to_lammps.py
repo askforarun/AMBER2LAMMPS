@@ -4,7 +4,7 @@ import numpy as np
 
 #The main code that writes LAMMPS input file and data file for AMBER
 def amber2lammps(ars):
-    AmberParm=pmd.amber.AmberParm
+    
     printBonds=pmd.tools.actions.printBonds
     printAngles=pmd.tools.actions.printAngles
     printDihedrals=pmd.tools.actions.printDihedrals
