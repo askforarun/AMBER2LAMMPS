@@ -7,7 +7,7 @@ python utility code to create LAMMPS data file
 
 You need to have antechamber, mdanalysis and RdKit (if you want use smiles) installed. 
 
-For installing antechmaber check 
+For installing antechamber check 
 
 (https://ambermd.org/AmberTools.php)
 
