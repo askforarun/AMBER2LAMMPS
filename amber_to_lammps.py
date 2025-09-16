@@ -2,7 +2,6 @@
 import parmed as pmd
 import numpy as np
 
-
 #The main code that writes LAMMPS input file and data file
 def amber2lammps(top,mol2,frcmod):
     AmberParm=pmd.amber.AmberParm
