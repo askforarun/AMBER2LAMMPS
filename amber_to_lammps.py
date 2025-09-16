@@ -2,7 +2,7 @@
 import parmed as pmd
 import numpy as np
 
-#The main code that writes LAMMPS input file and data file for AMBER force field
+#The main code that writes LAMMPS input file and data file for 
 def amber2lammps(ars):
     AmberParm=pmd.amber.AmberParm
     printBonds=pmd.tools.actions.printBonds
