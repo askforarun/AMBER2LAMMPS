@@ -1,7 +1,7 @@
 
 import parmed as pmd
 import numpy as np
-import sys
+
 
 #The main code that writes LAMMPS input file and data file
 def amber2lammps(top,mol2,frcmod):
@@ -97,10 +97,10 @@ def amber2lammps(top,mol2,frcmod):
 
         f.write("\nAtoms\n\n")
                 
-    # if np.sum(charges) >= 0:
-    #     charges=charges - (abs(np.sum(charges))/len(charges))
-    # elif np.sum(charges) < 0:
-    #     charges=charges + (abs(np.sum(charges))/len(charges))
+    if np.sum(charges) >= 0:
+        charges=charges - (abs(np.sum(charges))/len(charges))
+    elif np.sum(charges) < 0:
+        charges=charges + (abs(np.sum(charges))/len(charges))
 
     with open(frcmod) as f:
         for line in f:
