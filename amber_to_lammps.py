@@ -2,16 +2,16 @@
 import parmed as pmd
 import numpy as np
 
-#The main code that writes LAMMPS input file and data file
+#The main code that writes LAMMPS data file
 def amber2lammps(top,mol2,frcmod):
     AmberParm=pmd.amber.AmberParm
     printBonds=pmd.tools.actions.printBonds
     printAngles=pmd.tools.actions.printAngles
     printDihedrals=pmd.tools.actions.printDihedrals
 
-    #input: name.mol2, name.frcmod and name.top. These should be in the same folder or current directory
-    #output: data.name, parm.name and in.name  
-    #name is the name of mol2, frcmod and top file
+    #input: mol2, frcmod and top. 
+    #output: data.lammps, parm.lammps
+    #parm.lammps contains the parameters that should included in the input file 
 
     with open("data.lammps", "w") as f:
         f.write("LAMMS data file from parmed\n\n")
@@ -161,22 +161,7 @@ def amber2lammps(top,mol2,frcmod):
                             flammpsparm.write("dihedral_coeff {} 1 {} {} {}\n".format(i+1,line.split()[16],int(float(line.split()[17])),line.split()[18]))
                         i=i+1
 
-    with open("in.lammps", "w") as f:
-        f.write("units real\n")
-        f.write("dimension 3\n")
-        f.write("boundary p p p\n")
-        f.write("atom_style full\n")
-        f.write("read_data data.lammps\n")
-        f.write("pair_style      lj/cut/coul/long 9 9\n")
-        f.write("kspace_style    pppm 1.0e-8\n")
-        f.write("pair_modify     tail yes\n")
-        f.write("bond_style      harmonic\n")
-        f.write("angle_style      harmonic\n")
-        f.write("dihedral_style    fourier\n")
-        f.write("special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.83333333\n")
-        f.write("include parm.lammps\n")
-        f.write("thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe\n")
-        f.write("run 0")
+    
     
 
 
