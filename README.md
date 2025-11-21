@@ -33,8 +33,9 @@ For installing Intermol check
 https://github.com/shirtsgroup/InterMol
 
 
-InterMOL:
+InterMOL usage:
 
+python3 convert.py   --amb_in epon.prmtop epon.crd --lammps
 
 Per MPI rank memory allocation (min/avg/max) = 132.1 | 132.1 | 132.1 Mbytes
 
@@ -49,6 +50,8 @@ My code:
   E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
 
  2.3161274      6.0940126      12.475827      0             -9.7069268      9.9917113      97.869973     -117.56861     -0.0043506337   11.17904   
+
+ I would like mention here that when 
 
 
 Before checking make sure the box size is the same in the data file 
