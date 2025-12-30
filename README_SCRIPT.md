@@ -248,6 +248,17 @@ read_data "data.lammps"
 # Your LAMMPS simulation commands here
 ```
 
+#### Running LAMMPS
+
+**Command line usage:**
+```bash
+# Run with AMBER2LAMMPS generated files
+lmp < example_lammps_input.lmp
+
+# Run with InterMol generated files  
+lmp < example_lammps_input_intermol.lmp
+```
+
 #### Example Output
 
 When running the LAMMPS input script, you should see energy output similar to:
