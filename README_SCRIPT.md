@@ -148,52 +148,44 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 ```
 
-#### Batch Processing Example
+#### Simple Usage Example
 
 ```python
 #!/usr/bin/env python3
-import os
-from amber_to_lammps import amber2lammps
+from amber_to_lammps import amber2lammps, validate_files
+import sys
 
-def convert_multiple_systems():
-    """Convert multiple AMBER systems"""
+def convert_single_system():
+    """Convert a single AMBER system"""
     
-    systems = [
-        {
-            'name': 'system1',
-            'data_file': 'system1.lammps',
-            'param_file': 'system1_parm.lammps',
-            'topology': 'system1.prmtop',
-            'mol2': 'system1.mol2',
-            'frcmod': 'epon.frcmod'
-        },
-        {
-            'name': 'system2', 
-            'data_file': 'system2.lammps',
-            'param_file': 'system2_parm.lammps',
-            'topology': 'system2.prmtop',
-            'mol2': 'system2.mol2',
-            'frcmod': 'epon.frcmod'
-        }
-    ]
+    # Input files
+    data_file = 'system.lammps'
+    param_file = 'system_parm.lammps'
+    topology = 'system.prmtop'
+    mol2 = 'system.mol2'
+    frcmod = 'epon.frcmod'
     
-    for system in systems:
-        print(f"Converting {system['name']}...")
-        try:
-            amber2lammps(
-                data_file=system['data_file'],
-                param_file=system['param_file'],
-                topology=system['topology'],
-                mol2=system['mol2'],
-                frcmod=system['frcmod'],
-                verbose=True
-            )
-            print(f"✓ {system['name']} converted successfully")
-        except Exception as e:
-            print(f"✗ Failed to convert {system['name']}: {e}")
+    # Validate input files
+    validate_files(topology, mol2, frcmod)
+    
+    try:
+        amber2lammps(
+            data_file=data_file,
+            param_file=param_file,
+            topology=topology,
+            mol2=mol2,
+            frcmod=frcmod,
+            verbose=True
+        )
+        print(f"✓ Conversion completed: {data_file}")
+        return True
+    except Exception as e:
+        print(f"✗ Conversion failed: {e}")
+        return False
 
 if __name__ == "__main__":
-    convert_multiple_systems()
+    success = convert_single_system()
+    sys.exit(0 if success else 1)
 ```
 
 ## Function Parameters
