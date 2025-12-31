@@ -277,7 +277,7 @@ read_data "data.lammps"
 lmp < example_lammps_input.lmp
 
 # Run with InterMol generated files  
-lmp < example_lammps_input_intermol.lmp
+lmp < epon_converted.input
 ```
 
 #### Example Output
