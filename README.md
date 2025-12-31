@@ -105,7 +105,44 @@ The script generates two files with your specified names:
 - `{data_file}` - LAMMPS data file
 - `{param_file}` - LAMMPS parameters file
 
-### 2. Python Function Usage
+### 2. AMBER Workflow (Generating Input Files)
+
+If you need to generate AMBER input files from PDB, use this workflow:
+
+```python
+import subprocess
+
+# Step 1: Generate MOL2 file with charges
+cmd1 = "antechamber -j 4 -at gaff2 -dr no -fi pdb -fo mol2 -i epon.pdb -o epon.mol2 -c bcc"
+subprocess.run(cmd1, shell=True)
+
+# Step 2: Generate force field parameters
+cmd1 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
+subprocess.run(cmd1, shell=True)
+
+# Step 3: Create tleap input file
+with open("tleap.in", "w") as f:
+    f.write("source leaprc.gaff2\n")
+    f.write("SUS = loadmol2 epon.mol2\n") 
+    f.write("check SUS\n")
+    f.write("loadamberparams epon.frcmod\n")
+    f.write("saveamberparm SUS epon.prmtop epon.crd\n")
+    f.write("quit")
+
+# Step 4: Run tleap to generate AMBER files
+cmd1 = "tleap -f tleap.in"
+subprocess.run(cmd1, shell=True)
+
+# Check log file for any errors
+file_path = './leap.log'
+```
+
+**Prerequisites for AMBER Workflow:**
+- AMBERTools must be installed and in PATH
+- Input PDB file: `epon.pdb`
+- Output files: `epon.prmtop`, `epon.crd`, `epon.mol2`, `epon.frcmod`
+
+### 3. Python Function Usage
 
 You can also import and use the conversion function directly in your Python scripts.
 
