@@ -86,7 +86,7 @@ def amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verb
     # Initialize output files
     with open(data_file, "w") as f:
         f.write(f"LAMMPS data file from AMBER conversion\n")
-        f.write(f"Source: {topology}, {mol2}, {frcmod}\n\n")
+        f.write(f"#Source: {topology}, {mol2}, {frcmod}\n\n")
 
     with open(param_file, "w") as f:
         f.write(f"# Force field parameters generated from {frcmod}\n\n")
