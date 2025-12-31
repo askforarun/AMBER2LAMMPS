@@ -333,7 +333,7 @@ E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdw
 
 Use `--verbose` to see detailed progress:
 ```bash
-python3 amber_to_lammps.py -t epon.prmtop -m epon.mol2 -f epon.frcmod --verbose
+python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod --verbose
 ```
 
 This will show:
@@ -367,3 +367,4 @@ When making modifications:
 | Charge normalization | Yes | No |
 | Temporary file cleanup | Automatic | Manual |
 | Documentation | Comprehensive | Basic |
+
