@@ -57,11 +57,26 @@ def validate_files(topology, mol2, frcmod):
             print(f"Error: Cannot read {filetype} file '{filepath}'")
             sys.exit(1)
 
+def cleanup_temp_files(verbose=False):
+    """Remove temporary files if they exist"""
+    temp_files = ['bonds.txt', 'angles.txt', 'dihedrals.txt']
+    for temp_file in temp_files:
+        if os.path.exists(temp_file):
+            try:
+                os.remove(temp_file)
+                if verbose:
+                    print(f"Removed existing temporary file: {temp_file}")
+            except OSError as e:
+                print(f"Warning: Could not remove {temp_file}: {e}")
+
 def amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verbose=False):
     AmberParm=pmd.amber.AmberParm
     printBonds=pmd.tools.actions.printBonds
     printAngles=pmd.tools.actions.printAngles
     printDihedrals=pmd.tools.actions.printDihedrals
+
+    # Clean up temporary files if they exist
+    cleanup_temp_files(verbose)
 
     # Setup output files
     if verbose:
@@ -286,6 +301,9 @@ def amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verb
         print(f"  - {bond_count} bonds") 
         print(f"  - {angle_count} angles")
         print(f"  - {dihedral_count} dihedrals")
+    
+    # Clean up temporary files at the end
+    cleanup_temp_files(verbose)
 
 def main():
     """Main function"""
