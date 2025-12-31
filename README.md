@@ -384,6 +384,8 @@ When making modifications:
 
 ## License
 
-This script is distributed under the same license as the AMBER2LAMMPS project.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+
 
 
