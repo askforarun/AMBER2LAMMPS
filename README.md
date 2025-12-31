@@ -359,12 +359,8 @@ When making modifications:
 
 | Feature | AMBER2LAMMPS | InterMol |
 |---------|-------------|----------|
-| Command-line interface | Yes (argparse) | Basic |
-| Error handling | Comprehensive | Limited |
 | File validation | Yes | No |
-| Verbose output | Yes | No |
 | Configurable output | Custom names | Fixed names |
 | Charge normalization | Yes | No |
-| Temporary file cleanup | Automatic | Manual |
-| Documentation | Comprehensive | Basic |
+
 
