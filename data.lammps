@@ -1,4 +1,5 @@
-LAMMS data file from parmed
+LAMMPS data file from AMBER conversion
+#Source: epon.prmtop, epon.mol2, epon.frcmod
 
 53 atoms 
 8 atom types 

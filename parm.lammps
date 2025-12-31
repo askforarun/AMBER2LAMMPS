@@ -1,4 +1,4 @@
-# force field parameters for {}
+# Force field parameters generated from epon.frcmod
 
 pair_coeff 1 1 0.1094 3.3996695084235338 # c3
 pair_coeff 2 2 0.0157 2.6495327877493686 # hc

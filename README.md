@@ -285,8 +285,8 @@ lmp < epon_converted.input
 When running the LAMMPS input script, you should see energy output similar to:
 
 ```
-E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
- 2.3161274      6.0940384      12.475809      0             -8.8739005      10.824738      97.869973     -117.56861     -0.0044166818   12.012074    
+ E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
+ 2.3161274      6.0940126      12.475827      0             -9.9485615      9.6829743      108.01561     -127.64715     -0.3129371      10.937406    
 ```
 
 This output shows the breakdown of energy components from the converted system, confirming that the force field parameters have been correctly transferred from AMBER to LAMMPS.
