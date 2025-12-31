@@ -41,25 +41,6 @@ or install from https://ambermd.org/GetAmber.php#ambertools
 conda activate Ambertools23  # or your AMBERTools version
 ```
 
-## Improvements Over InterMol
-
-This enhanced AMBER2LAMMPS script provides several key improvements over the standard InterMol conversion:
-
-### Charge Normalization
-- **Problem:** InterMol-generated LAMMPS data files may have non-zero net charge due to antechamber charge assignments
-- **Solution:** This script automatically normalizes atomic charges to ensure zero net charge
-- **Benefit:** More physically accurate systems and better compatibility with LAMMPS simulations
-
-### Better File Handling
-- **Problem:** Limited error checking and file validation in basic conversions
-- **Solution:** Comprehensive file validation with clear error messages
-- **Benefit:** Users get immediate feedback on missing or unreadable files
-
-### Configurable Output Naming
-- **Problem:** InterMol uses fixed naming conventions (e.g., `epon_converted.lmp`)
-- **Solution:** Users can specify custom output filenames
-- **Benefit:** Better organization and workflow integration
-
 ## Usage
 
 ### 1. AMBER Workflow (Generating Input Files)
@@ -400,5 +381,9 @@ When making modifications:
 | File validation | Yes | No |
 | Configurable output | Custom names | Fixed names |
 | Charge normalization | Yes | No |
+
+## License
+
+This script is distributed under the same license as the AMBER2LAMMPS project.
 
 
