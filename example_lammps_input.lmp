@@ -1,5 +1,4 @@
 # LAMMPS Input Script for Converted AMBER System
-# Based on the original AMBER2LAMMPS workflow
 
 # --------------------- Initialization ---------------------
 units real
@@ -30,14 +29,4 @@ thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe
 # Run 0 steps to check energy and system setup
 run 0
 
-# --------------------- Optional: Add minimization or dynamics below ---------------------
-# Uncomment and modify as needed:
 
-# Minimization
-# minimize 1.0e-4 1.0e-6 1000 10000
-
-# Short dynamics
-# timestep 1.0
-# velocity all create 300.0 12345 dist gaussian
-# fix 1 all nvt temp 300.0 300.0 100.0
-# run 10000

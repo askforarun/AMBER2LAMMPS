@@ -1,4 +1,4 @@
-# AMBER2LAMMPS - Enhanced Script
+# AMBER2LAMMPS
 
 A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling.
 
@@ -6,10 +6,12 @@ A Python utility to convert AMBER molecular dynamics files to LAMMPS data format
 
 - Convert AMBER topology (.prmtop) and MOL2 coordinates to LAMMPS data format
 - Extract force field parameters from AMBER frcmod files
+- **Charge normalization** - Automatically normalizes atomic charges to ensure zero net charge (improvement over InterMol)
 - Command-line interface with comprehensive options
 - Verbose output for debugging and monitoring
 - Automatic file validation and error handling
-- Configurable output file naming
+- **Better file handling** - Improved input/output file management and error checking
+- **Configurable output file naming** - Custom names for data and parameter files (improvement over fixed InterMol naming)
 - Automatic cleanup of temporary files
 
 ## Installation
@@ -37,6 +39,30 @@ If you have AMBERTools installed, you can activate the environment:
 ```bash
 conda activate Ambertools23  # or your AMBERTools version
 ```
+
+## Improvements Over InterMol
+
+This enhanced AMBER2LAMMPS script provides several key improvements over the standard InterMol conversion:
+
+### Charge Normalization
+- **Problem:** InterMol-generated LAMMPS data files may have non-zero net charge due to antechamber charge assignments
+- **Solution:** This script automatically normalizes atomic charges to ensure zero net charge
+- **Benefit:** More physically accurate systems and better compatibility with LAMMPS simulations
+
+### Better File Handling
+- **Problem:** Limited error checking and file validation in basic conversions
+- **Solution:** Comprehensive file validation with clear error messages
+- **Benefit:** Users get immediate feedback on missing or unreadable files
+
+### Configurable Output Naming
+- **Problem:** InterMol uses fixed naming conventions (e.g., `epon_converted.lmp`)
+- **Solution:** Users can specify custom output filenames
+- **Benefit:** Better organization and workflow integration
+
+### Enhanced User Experience
+- **Problem:** Limited feedback during conversion process
+- **Solution:** Verbose output showing progress and statistics
+- **Benefit:** Users can monitor conversion and debug issues easily
 
 ## Usage
 
@@ -324,7 +350,7 @@ This will show:
 
 ## License
 
-This enhanced script maintains the same license as the original AMBER2LAMMPS project.
+This script is distributed under the same license as the AMBER2LAMMPS project.
 
 ## Contributing
 
@@ -334,14 +360,15 @@ When making modifications:
 3. Test thoroughly with different input files
 4. Commit and push your changes
 
-## Original vs Enhanced
+## Features Comparison
 
-| Feature | Original | Enhanced |
-|---------|----------|----------|
-| Command-line interface | No | Yes (argparse) |
-| Error handling | Basic | Comprehensive |
-| File validation | No | Yes |
-| Verbose output | No | Yes |
-| Configurable output | Fixed names | Custom prefixes |
-| Temporary file cleanup | No | Automatic |
-| Documentation | Minimal | Comprehensive |
+| Feature | AMBER2LAMMPS | InterMol |
+|---------|-------------|----------|
+| Command-line interface | Yes (argparse) | Basic |
+| Error handling | Comprehensive | Limited |
+| File validation | Yes | No |
+| Verbose output | Yes | No |
+| Configurable output | Custom names | Fixed names |
+| Charge normalization | Yes | No |
+| Temporary file cleanup | Automatic | Manual |
+| Documentation | Comprehensive | Basic |
