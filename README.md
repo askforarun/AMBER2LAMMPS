@@ -3,6 +3,12 @@
 A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling 
 The python script is validated against output from INTERMOL for accuracy.
 
+## Citation
+
+If you use this software in your research, please cite it as:
+
+**DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
+
 ## Features
 
 - Convert AMBER topology (.prmtop) and MOL2 coordinates to LAMMPS data format
