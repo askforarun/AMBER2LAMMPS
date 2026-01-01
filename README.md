@@ -14,6 +14,7 @@ If you use this software in your research, please cite it as:
 - Convert AMBER topology (.prmtop) and MOL2 coordinates to LAMMPS data format
 - Extract force field parameters from AMBER frcmod files
 - **Charge normalization** - Automatically normalizes atomic charges to ensure zero net charge (improvement over InterMol)
+- **Separate data and parameter files** - Generates distinct LAMMPS data file and parameter file for better organization and flexibility (improvement over InterMol's mixed output)
 - Command-line interface with comprehensive options
 - Verbose output for debugging and monitoring
 - Automatic file validation and error handling
@@ -387,10 +388,86 @@ When making modifications:
 |---------|-------------|----------|
 | Configurable output | Custom names | Fixed names |
 | Charge normalization | Yes | No |
+| Separate data/parameter files | Yes | No |
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Function Parameters
+
+### `amber2lammps()` Function
+
+```python
+amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verbose=False)
+```
+
+**Parameters:**
+- `data_file` (str): Output LAMMPS data file name
+- `param_file` (str): Output LAMMPS parameter file name
+- `topology` (str): Path to AMBER topology file (.prmtop)
+- `mol2` (str): Path to MOL2 coordinate file
+- `frcmod` (str): Path to force field parameter file (.frcmod)
+- `buffer` (float, optional): Buffer size around molecule in Å (default: 3.8)
+- `verbose` (bool, optional): Enable verbose output (default: False)
+
+### `validate_files()` Function
+
+```python
+validate_files(topology, mol2, frcmod)
+```
+
+**Parameters:**
+- `topology` (str): Path to AMBER topology file
+- `mol2` (str): Path to MOL2 file
+- `frcmod` (str): Path to frcmod file
+
+**Behavior:** Exits with error code 1 if any file is missing or unreadable.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **ModuleNotFoundError: No module named 'parmed'**
+   ```bash
+   pip install parmed
+   ```
+
+2. **File not found errors**
+   - Check that all input files exist and are readable
+   - Use absolute paths if files are in different directories
+
+3. **Atom type not found warnings**
+   - Ensure your frcmod file contains all atom types from your MOL2 file
+   - Check that atom type names match exactly
+
+### Verbose Mode
+
+Use `--verbose` to see detailed progress:
+```bash
+python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod --verbose
+```
+
+This will show:
+- File loading progress
+- Number of atoms, bonds, angles, dihedrals found
+- Box dimensions
+- Charge normalization
+- Section-by-section writing progress
+
+## Validation
+
+The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy and force consistency across different MD packages.
+
+**GitHub Repository:** https://github.com/shirtsgroup/InterMol
+
+**Example LAMMPS Energy Output:**
+```
+E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
+ 2.3161274      6.0940384      12.475809      0             -8.8739005      10.824738      97.869973     -117.56861     -0.0044166818   12.012074    
+```
+
+This output shows the breakdown of energy components from the converted system, confirming that the force field parameters have been correctly transferred from AMBER to LAMMPS.
 
 
 
