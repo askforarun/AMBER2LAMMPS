@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Sridhar"
+  given-names: "Arun"
+  orcid: "https://orcid.org/0000-0000-0000-0000"
+title: "AMBER2LAMMPS: A Python Utility for Converting AMBER Molecular Dynamics Files to LAMMPS Data Format"
+version: 1.0.0
+doi: 10.5281/zenodo.18114886
+date-released: 2025-01-01
+url: "https://github.com/askforarun/AMBER2LAMMPS"
+abstract: "A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling. The python script is validated against output from INTERMOL for accuracy."
+license: MIT
+repository-code: "https://github.com/askforarun/AMBER2LAMMPS"
+keywords:
+- molecular dynamics
+- AMBER
+- LAMMPS
+- file conversion
+- charge normalization
+- Python
+- scientific computing
+references:
+- type: software
+  title: "AMBER2LAMMPS: A Python Utility for Converting AMBER Molecular Dynamics Files to LAMMPS Data Format"
+  authors:
+  - family-names: "Sridhar"
+    given-names: "Arun"
+  year: 2025
+  doi: 10.5281/zenodo.18114886
+  url: "https://github.com/askforarun/AMBER2LAMMPS"
