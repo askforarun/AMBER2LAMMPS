@@ -1,6 +1,7 @@
 # AMBER2LAMMPS
 
-A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling.
+A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling 
+The python script is validated against output from INTERMOL for accuracy.
 
 ## Features
 
@@ -10,7 +11,7 @@ A Python utility to convert AMBER molecular dynamics files to LAMMPS data format
 - Command-line interface with comprehensive options
 - Verbose output for debugging and monitoring
 - Automatic file validation and error handling
-- **Better file handling** - Improved input/output file management and error checking
+- input/output file management and error checking
 - **Configurable output file naming** - Custom names for data and parameter files (improvement over fixed InterMol naming)
 - Automatic cleanup of temporary files
 
@@ -378,7 +379,6 @@ When making modifications:
 
 | Feature | AMBER2LAMMPS | InterMol |
 |---------|-------------|----------|
-| File validation | Yes | No |
 | Configurable output | Custom names | Fixed names |
 | Charge normalization | Yes | No |
 
