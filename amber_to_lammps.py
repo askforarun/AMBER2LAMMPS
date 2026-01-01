@@ -187,8 +187,6 @@ def amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verb
 
         f.write("\nAtoms\n\n")
                 
-    if np.sum(charges) >= 0:
-        charges=charges - (abs(np.sum(charges))/len(charges))
     # Normalize charges to ensure neutrality
     if verbose:
         print(f"Normalizing charges (total charge: {np.sum(charges):.6f})...")
