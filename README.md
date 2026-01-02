@@ -16,12 +16,6 @@ If you use this software in your research, please cite it as:
 
 **DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
 
-## License for LAMMPS Distribution
-
-This contribution to LAMMPS is licensed under the GNU General Public License version 2 (GPLv2) and GNU Lesser General Public License version 2.1 (LGPLv2.1) as required for all contributions to the LAMMPS distribution.
-
-**Note:** The original AMBER2LAMMPS project is licensed under MIT License. As the copyright holder, you are free to distribute this code under different licenses. The version included in LAMMPS follows the required GPLv2/LGPLv2.1 licensing.
-
 ## Features
 
 - Convert AMBER topology (.prmtop) and MOL2 coordinates to LAMMPS data format
