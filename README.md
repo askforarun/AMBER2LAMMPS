@@ -327,7 +327,7 @@ This output shows the breakdown of energy components from the converted system, 
 
 ## Validation
 
-The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy and force consistency across different MD packages.
+The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy accuracy.
 
 **GitHub Repository:** https://github.com/shirtsgroup/InterMol
 
@@ -466,7 +466,7 @@ This will show:
 
 ## Validation
 
-The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy and force consistency across different MD packages.
+The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy accuracy.
 
 **GitHub Repository:** https://github.com/shirtsgroup/InterMol
 
