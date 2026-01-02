@@ -1,6 +1,13 @@
 # AMBER2LAMMPS
 
-A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling 
+A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling. 
+
+## About AMBER2LAMMPS
+
+AMBER2LAMMPS is an open-source project originally developed to bridge the gap between AMBER and LAMMPS molecular dynamics packages. The project provides a robust conversion tool with enhanced features over existing alternatives.
+
+**Original Project Repository:** https://github.com/askforarun/AMBER2LAMMPS
+
 The python script is validated against output from INTERMOL for accuracy.
 
 ## Citation
@@ -8,6 +15,12 @@ The python script is validated against output from INTERMOL for accuracy.
 If you use this software in your research, please cite it as:
 
 **DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
+
+## License for LAMMPS Distribution
+
+This contribution to LAMMPS is licensed under the GNU General Public License version 2 (GPLv2) and GNU Lesser General Public License version 2.1 (LGPLv2.1) as required for all contributions to the LAMMPS distribution.
+
+**Note:** The original AMBER2LAMMPS project is licensed under MIT License. As the copyright holder, you are free to distribute this code under different licenses. The version included in LAMMPS follows the required GPLv2/LGPLv2.1 licensing.
 
 ## Features
 
@@ -392,7 +405,9 @@ When making modifications:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+**Original Project:** The AMBER2LAMMPS project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+**LAMMPS Distribution:** This contribution to LAMMPS is licensed under GPLv2 and LGPLv2.1 as required for all LAMMPS contributions.
 
 ## Function Parameters
 
