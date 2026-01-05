@@ -2,6 +2,8 @@
 
 A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling. 
 
+**Note:** This tool is designed to replace the legacy `amber2lammps.py` script shipped with LAMMPS, providing improved functionality, better error handling, and enhanced features. 
+
 ## About AMBER2LAMMPS
 
 AMBER2LAMMPS is an open-source project originally developed to bridge the gap between AMBER and LAMMPS molecular dynamics packages. The project provides a robust conversion tool with enhanced features over existing alternatives (amber2lammps.py or intermol).
