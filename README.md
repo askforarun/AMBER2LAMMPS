@@ -70,8 +70,8 @@ cmd1 = "antechamber -j 4 -at gaff2 -dr no -fi pdb -fo mol2 -i epon.pdb -o epon.m
 subprocess.run(cmd1, shell=True)
 
 # Step 2: Generate force field parameters
-cmd1 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
-subprocess.run(cmd1, shell=True)
+cmd2 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
+subprocess.run(cmd2, shell=True)
 
 # Step 3: Create tleap input file
 with open("tleap.in", "w") as f:
@@ -83,8 +83,8 @@ with open("tleap.in", "w") as f:
     f.write("quit")
 
 # Step 4: Run tleap to generate AMBER files
-cmd1 = "tleap -f tleap.in"
-subprocess.run(cmd1, shell=True)
+cmd3 = "tleap -f tleap.in"
+subprocess.run(cmd3, shell=True)
 
 # Check log file for any errors
 file_path = './leap.log'
