@@ -4,7 +4,7 @@ A Python utility to convert AMBER molecular dynamics files to LAMMPS data format
 
 **Note:** This tool is designed to replace the legacy `amber2lammps.py` script shipped with LAMMPS, providing improved functionality, better error handling, and enhanced features.
 
-**🚨 Project Status:** This project has been assimilated into [MolBridge](https://github.com/askforarun/MolBridge), a comprehensive molecular dynamics conversion framework. Please use MolBridge for new developments and updates. However, this script can still be used and issues can be opened here for support. 
+**🚨 Project Status:** This project has been assimilated into [TopBridge](https://github.com/askforarun/TopBridge), a comprehensive molecular dynamics conversion framework. Please use TopBridge for new developments and updates. However, this script can still be used and issues can be opened here for support. 
 
 ## About AMBER2LAMMPS
 
