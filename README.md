@@ -307,6 +307,9 @@ read_data "data.lammps"
 ```bash
 # Run with AMBER2LAMMPS generated files
 lmp < example_lammps_input.lmp
+
+# Run with InterMol generated files
+lmp < epon_converted.input
 ```
 
 #### Example Output
@@ -314,8 +317,8 @@ lmp < example_lammps_input.lmp
 When running the LAMMPS input script, you should see energy output similar to:
 
 ```text
-E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng
-2.3161274      6.0940126      12.475827      0             -9.1202197      10.511316      108.01561     -127.64715     -0.31768789     11.765747
+  E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
+ 2.3161274      6.0940126      12.475827      0             -9.1202197      10.511316      108.01561     -127.64715     -0.31768789     11.765747    
 ```
 
 This output shows the breakdown of energy components from the converted system, confirming that the force field parameters have been correctly transferred from AMBER to LAMMPS.
@@ -334,11 +337,6 @@ python convert.py --amb_in epon.prmtop epon.crd --lammps
 **Generated Files:**
 - `epon_converted.input` (LAMMPS input file)
 - `epon_converted.lmp` (LAMMPS data file)
-
-```bash
-# Run with InterMol generated files
-lmp < epon_converted.input
-```
 
 **Example LAMMPS Output:**
 ```text
