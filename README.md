@@ -1,16 +1,14 @@
 # AMBER2LAMMPS
 
-A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling. 
+A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling.
 
-**Note:** This tool is designed to replace the legacy `amber2lammps.py` script shipped with LAMMPS, providing improved functionality, better error handling, and enhanced features.
+**Note:** Designed as a modern replacement for the legacy `amber2lammps.py` script shipped with LAMMPS.
 
-**🚨 Project Status:** This repository is the home of AMBER2LAMMPS. Issues and pull requests are welcome. 
+**🚨 Project Status:** This repository is the home of AMBER2LAMMPS. Issues and pull requests are welcome.
 
 ## About AMBER2LAMMPS
 
-AMBER2LAMMPS is an open-source project originally developed to bridge the gap between AMBER and LAMMPS molecular dynamics packages. The project provides a robust conversion tool with enhanced features over existing alternatives (amber2lammps.py or intermol).
-
-The python script is validated against output from INTERMOL for accuracy.
+AMBER2LAMMPS bridges AMBER and LAMMPS by converting AMBER topology/coordinate files into LAMMPS data/parameter files. The conversion has been validated against output from InterMol for accuracy.
 
 ## Citation
 
@@ -27,7 +25,7 @@ If you use this software in your research, please cite it as:
 - Command-line interface with comprehensive options
 - Verbose output for debugging and monitoring
 - Automatic file validation and error handling
-- input/output file management and error checking
+- Input/output file management and error checking
 - **Configurable output file naming** - Custom names for data and parameter files (improvement over fixed InterMol naming)
 - Automatic cleanup of temporary files
 
@@ -51,8 +49,7 @@ pip install numpy parmed
 
 ### AMBERTools (Optional)
 
-If you have AMBERTools installed, you can activate the environment:
-or install from https://ambermd.org/GetAmber.php#ambertools
+If you have AMBERTools installed, you can activate the environment (or install from https://ambermd.org/GetAmber.php#ambertools):
 
 ```bash
 conda activate Ambertools23  # or your AMBERTools version
@@ -78,7 +75,7 @@ subprocess.run(cmd2, shell=True)
 # Step 3: Create tleap input file
 with open("tleap.in", "w") as f:
     f.write("source leaprc.gaff2\n")
-    f.write("SUS = loadmol2 epon.mol2\n") 
+    f.write("SUS = loadmol2 epon.mol2\n")
     f.write("check SUS\n")
     f.write("loadamberparams epon.frcmod\n")
     f.write("saveamberparm SUS epon.prmtop epon.crd\n")
@@ -109,9 +106,9 @@ python3 amber_to_lammps.py <data_file> <param_file> <topology> <mol2> <frcmod>
 
 **Positional Arguments:**
 - `data_file`: Output LAMMPS data file name
-- `param_file`: Output LAMMPS parameter file name  
+- `param_file`: Output LAMMPS parameter file name
 - `topology`: AMBER topology file (.prmtop)
-- `mol2`: MOL2 coordinate file  
+- `mol2`: MOL2 coordinate file
 - `frcmod`: Force field parameter file (.frcmod)
 
 **Optional Arguments:**
@@ -155,7 +152,7 @@ amber2lammps(
     data_file='data.lammps',
     param_file='parm.lammps',
     topology='epon.prmtop',
-    mol2='epon.mol2', 
+    mol2='epon.mol2',
     frcmod='epon.frcmod'
 )
 
@@ -179,10 +176,10 @@ import sys
 
 def convert_system(data_file, param_file, topology, mol2, frcmod):
     """Convert AMBER system with error handling"""
-    
+
     # Validate input files
     validate_files(topology, mol2, frcmod)
-    
+
     try:
         amber2lammps(
             data_file=data_file,
@@ -200,8 +197,7 @@ def convert_system(data_file, param_file, topology, mol2, frcmod):
 
 # Usage
 if __name__ == "__main__":
-    success = convert_system('epon.lammps', 'epon_parm.lammps', 
-                           'epon.prmtop', 'epon.mol2', 'epon.frcmod')
+    success = convert_system('epon.lammps', 'epon_parm.lammps', 'epon.prmtop', 'epon.mol2', 'epon.frcmod')
     sys.exit(0 if success else 1)
 ```
 
@@ -214,17 +210,17 @@ import sys
 
 def convert_single_system():
     """Convert a single AMBER system"""
-    
+
     # Input files
     data_file = 'system.lammps'
     param_file = 'system_parm.lammps'
     topology = 'system.prmtop'
     mol2 = 'system.mol2'
     frcmod = 'epon.frcmod'
-    
+
     # Validate input files
     validate_files(topology, mol2, frcmod)
-    
+
     try:
         amber2lammps(
             data_file=data_file,
@@ -311,18 +307,15 @@ read_data "data.lammps"
 ```bash
 # Run with AMBER2LAMMPS generated files
 lmp < example_lammps_input.lmp
-
-# Run with InterMol generated files  
-lmp < epon_converted.input
 ```
 
 #### Example Output
 
 When running the LAMMPS input script, you should see energy output similar to:
 
-```
- E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
- 2.3161274      6.0940126      12.475827      0             -9.9485615      9.6829743      108.01561     -127.64715     -0.3129371      10.937406    
+```text
+E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng
+2.3161274      6.0940126      12.475827      0             -9.1202197      10.511316      108.01561     -127.64715     -0.31768789     11.765747
 ```
 
 This output shows the breakdown of energy components from the converted system, confirming that the force field parameters have been correctly transferred from AMBER to LAMMPS.
@@ -342,10 +335,15 @@ python convert.py --amb_in epon.prmtop epon.crd --lammps
 - `epon_converted.input` (LAMMPS input file)
 - `epon_converted.lmp` (LAMMPS data file)
 
-**Example LAMMPS Output:**
+```bash
+# Run with InterMol generated files
+lmp < epon_converted.input
 ```
-E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
- 2.3161274      6.0940384      12.475809      0             -8.8739005      10.824738      97.869973     -117.56861     -0.0044166818   12.012074    
+
+**Example LAMMPS Output:**
+```text
+E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng
+2.3161274      6.0940384      12.475809      0             -8.8739005      10.824738      97.869973     -117.56861     -0.0044166818   12.012074
 ```
 
 ## Troubleshooting
