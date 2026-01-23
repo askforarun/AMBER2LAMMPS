@@ -1,14 +1,6 @@
 # AMBER2LAMMPS
 
-A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling.
-
-**Note:** Designed as a modern replacement for the legacy `amber2lammps.py` script shipped with LAMMPS.
-
-**🚨 Project Status:** This repository is the home of AMBER2LAMMPS. Issues and pull requests are welcome.
-
-## About AMBER2LAMMPS
-
-AMBER2LAMMPS bridges AMBER and LAMMPS by converting AMBER topology/coordinate files into LAMMPS data/parameter files. The conversion has been validated against output from InterMol for accuracy.
+A Python utility to convert AMBER molecular dynamics files to LAMMPS data format with enhanced command-line interface and error handling. Also mentioned on the [LAMMPS pre/post processing tools page](https://www.lammps.org/prepost.html).
 
 ## Citation
 
@@ -16,7 +8,8 @@ If you use this software in your research, please cite it as:
 
 **DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
 
-## Features
+
+### Key Features 
 
 - Convert AMBER topology (.prmtop) and MOL2 coordinates to LAMMPS data format
 - Extract force field parameters from AMBER frcmod files
@@ -28,6 +21,54 @@ If you use this software in your research, please cite it as:
 - Input/output file management and error checking
 - **Configurable output file naming** - Custom names for data and parameter files (improvement over fixed InterMol naming)
 - Automatic cleanup of temporary files
+
+## Command Reference
+
+### CLI
+
+```bash
+python3 amber_to_lammps.py <data_file> <param_file> <topology> <mol2> <frcmod> [options]
+```
+
+| Argument | Required? | Description |
+| --- | --- | --- |
+| `data_file` | yes | Output LAMMPS data filename |
+| `param_file` | yes | Output LAMMPS parameter filename |
+| `topology` | yes | AMBER topology file (`.prmtop`) - filename or path to input topology |
+| `mol2` | yes | MOL2 coordinate file (with charges) - filename or path to input coordinates |
+| `frcmod` | yes | AMBER force field parameter file (`.frcmod`) - filename or path to input parameters |
+| `-b, --buffer` | optional | Vacuum padding (Å) used to set the simulation box. Larger values add more empty space around the molecule. Default: `3.8`. |
+| `--verbose` | optional | Print step-by-step progress, counts, and derived values (box size, charge shifts). |
+| `-h, --help` | optional | Show help message. |
+
+#### Examples
+
+```bash
+# Standard conversion
+python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod
+
+# Custom buffer and verbose logging (adds 5 Å padding around molecule)
+python3 amber_to_lammps.py my_data.lammps my_params.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 5.0
+
+# Custom output names
+python3 amber_to_lammps.py system.data system.parm system.prmtop system.mol2 system.frcmod
+```
+
+### Python API
+
+```python
+from amber_to_lammps import amber2lammps, validate_files
+
+amber2lammps(
+    data_file='data.lammps',
+    param_file='parm.lammps',
+    topology='epon.prmtop',
+    mol2='epon.mol2',
+    frcmod='epon.frcmod',
+    buffer=3.8,       # optional
+    verbose=False,    # optional
+)
+```
 
 ## Installation
 
@@ -47,7 +88,74 @@ pip install parmed
 pip install numpy parmed
 ```
 
-### AMBERTools (Optional)
+### LAMMPS Installation
+
+LAMMPS is required to run the generated input files. Install using one of these methods:
+#### From source
+Download from https://lammps.org/ and follow the build instructions. **Include these packages while compiling:** `MOLECULE KSPACE EXTRA-MOLECULE`
+
+## Conversion Logic and Option Effects
+
+Below is the sequence implemented in `amber_to_lammps.py` and how options influence it:
+
+1. **Input validation**: `validate_files` checks that `topology`, `mol2`, and `frcmod` exist and are readable. Fail-fast prevents partial outputs and exits with code 1 if any file is missing or unreadable.
+2. **AMBER topology load**: ParmEd reads atoms, bonds, angles, and dihedrals from `.prmtop`. Counts are echoed in `--verbose` mode.
+3. **Atom typing and masses**: The script parses `MASS` entries in `frcmod` to map atom types to sequential IDs and masses. Missing types warn and fall back to type 1.
+4. **Coordinates and charges**: Coordinates and per-atom charges are read from the MOL2 `ATOM` block.
+5. **Box creation (`--buffer`)**: The simulation box is a bounding box around the coordinates expanded equally by the buffer. Increase `--buffer` if atoms are near the box edge; decrease for tighter, smaller boxes.
+6. **Charge normalization**: Total charge is shifted uniformly across atoms so the system is neutral. This mirrors common AMBER→LAMMPS workflows and avoids LAMMPS warnings from slight charge drift.
+7. **Nonbonded parameters**: `NONBON` terms in `frcmod` become `pair_coeff` entries in the parameter file.
+8. **Topology terms**: Bonds/angles/dihedrals are exported via ParmEd to temporary files and then written to the LAMMPS data/parameter files with matching coefficients.
+9. **Cleanup**: Temporary helper files (`bonds.txt`, `angles.txt`, `dihedrals.txt`) are removed; verbose mode reports all generated counts.
+10. **Verbose diagnostics**: With `--verbose`, the script echoes counts, box extents (after buffer), the applied charge shift to achieve neutrality, and warnings if atom types/parameters are missing so you can intervene early.
+
+## Guided Tutorial (end-to-end)
+
+Use the included EPON example to see the full workflow and rationale.
+
+### 1) Input Files  
+   - `epon.prmtop`: topology/connectivity from AMBER  
+   - `epon.mol2`: coordinates **with per-atom charges** from Antechamber  
+   - `epon.frcmod`: GAFF/GAFF2 parameters not in the base force field  
+   Together they contain all structure + charge + parameters needed for LAMMPS.
+
+### 2) Run the conversion  
+   ```bash
+   python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 4.5
+   ```
+   - `--verbose` shows the parsed counts, box extents, and charge shift so you can spot issues early.
+   - `-b 4.5` pads the box by 4.5 Å in each direction; increase if you see atoms too close to periodic images.
+
+### 3) Inspect the outputs  
+   - `data.lammps`: contains atom coordinates, types, charges, and topology sections. Confirm atom/bond counts match `--verbose` output.  
+   - `parm.lammps`: contains `pair_coeff`, `bond_coeff`, `angle_coeff`, and `dihedral_coeff`. Spot-check a few entries against your frcmod if parameters seem off.
+
+### 4) Run LAMMPS  
+   Use the provided `example_lammps_input.lmp`:
+   ```bash
+   lmp < example_lammps_input.lmp
+   ```
+   The input `include`s `parm.lammps` first, then `read_data` loads `data.lammps`. Keeping parameters separate makes it easier to swap parameter sets without regenerating coordinates.
+
+### 5) Validate energies (optional but recommended)  
+   - Compare to InterMol conversion: `python convert.py --amb_in epon.prmtop epon.crd --lammps` and run the generated input.  
+   - Energy components should agree within numerical noise; the examples in this repo show matching values.
+
+### 6) Adapting to your own system  
+   - Regenerate `*.mol2` with Antechamber if you change chemistry so charges and atom types stay in sync.  
+   - Keep `frcmod` and `mol2` consistent; mismatched atom type names produce warnings and default to type 1.  
+   - Tune `--buffer` if you change the molecule size or intend to run gas-phase vs solvated systems.
+
+### Common Issues and Solutions
+
+- **Missing/incorrect atom types**: If LAMMPS reports unknown atom types or you see warnings from this script, check that every atom type in `mol2` exists in `frcmod`. Mismatches often come from editing MOL2 by hand or using the wrong GAFF version.  
+- **Bad charges or non-neutral system**: A MOL2 generated without charges (or with mixed charge methods) can lead to unexpected shifts when neutrality is enforced. Regenerate MOL2 with the same charge model (e.g., `antechamber -c bcc`) and confirm charges sum to the intended value.  
+- **Box too small**: If atoms are interacting with periodic images, increase `--buffer`. For larger or elongated molecules, visualize the bounding box or print verbose logs to confirm min/max extents.  
+- **Parameter gaps**: If LAMMPS errors on missing `pair_coeff`/`bond_coeff` entries, the required terms were not present in `frcmod`. Re-run `parmchk2` on the current MOL2 or add missing terms manually.  
+- **Wrong file versions**: Changing the molecule but reusing old `prmtop`/`mol2`/`frcmod` leads to inconsistent topology vs coordinates. Regenerate the full AMBER set whenever chemistry changes.  
+- **Energy mismatches vs reference**: Compare per-term energies (bond, angle, dihedral, nonbonded) against AMBER or InterMol. Large deviations usually trace back to parameter gaps or atom-type mismatches rather than box size.
+
+## AMBERTools Setup
 
 If you have AMBERTools installed, you can activate the environment (or install from https://ambermd.org/GetAmber.php#ambertools):
 
@@ -55,7 +163,7 @@ If you have AMBERTools installed, you can activate the environment (or install f
 conda activate Ambertools23  # or your AMBERTools version
 ```
 
-## Usage
+## Preparing AMBER Inputs (optional refresher)
 
 ### 1. AMBER Workflow (Generating Input Files)
 
@@ -94,79 +202,7 @@ file_path = './leap.log'
 - Input PDB file: `epon.pdb`
 - Output files: `epon.prmtop`, `epon.crd`, `epon.mol2`, `epon.frcmod`
 
-### 2. Command Line Interface
-
-#### Basic Usage
-
-```bash
-python3 amber_to_lammps.py <data_file> <param_file> <topology> <mol2> <frcmod>
-```
-
-#### Arguments
-
-**Positional Arguments:**
-- `data_file`: Output LAMMPS data file name
-- `param_file`: Output LAMMPS parameter file name
-- `topology`: AMBER topology file (.prmtop)
-- `mol2`: MOL2 coordinate file
-- `frcmod`: Force field parameter file (.frcmod)
-
-**Optional Arguments:**
-- `-b, --buffer`: Buffer size around molecule in Å (default: 3.8)
-- `--verbose`: Enable verbose output
-- `-h, --help`: Show help message
-
-#### Examples
-
-```bash
-# Standard conversion
-python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod
-
-# Custom output filenames
-python3 amber_to_lammps.py system.data system.parm system.prmtop system.mol2 system.frcmod
-
-# Verbose mode with custom buffer
-python3 amber_to_lammps.py my_data.lammps my_params.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 5.0
-
-# Get help
-python3 amber_to_lammps.py --help
-```
-
-#### Output Files
-
-The script generates two files with your specified names:
-- `{data_file}` - LAMMPS data file
-- `{param_file}` - LAMMPS parameters file
-
-### 3. Python Function Usage
-
-You can also import and use the conversion function directly in your Python scripts.
-
-#### Basic Function Import
-
-```python
-from amber_to_lammps import amber2lammps
-
-# Basic conversion
-amber2lammps(
-    data_file='data.lammps',
-    param_file='parm.lammps',
-    topology='epon.prmtop',
-    mol2='epon.mol2',
-    frcmod='epon.frcmod'
-)
-
-# With custom options
-amber2lammps(
-    data_file='my_system.lammps',
-    param_file='my_system_parm.lammps',
-    topology='system.prmtop',
-    mol2='system.mol2',
-    frcmod='epon.frcmod',
-    buffer=5.0,
-    verbose=True
-)
-```
+### Python Usage Patterns
 
 #### Advanced Usage with Error Handling
 
@@ -241,88 +277,6 @@ if __name__ == "__main__":
     sys.exit(0 if success else 1)
 ```
 
-## Function Parameters
-
-### `amber2lammps()` Function
-
-```python
-amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verbose=False)
-```
-
-**Parameters:**
-- `data_file` (str): Output LAMMPS data file name
-- `param_file` (str): Output LAMMPS parameter file name
-- `topology` (str): Path to AMBER topology file (.prmtop)
-- `mol2` (str): Path to MOL2 coordinate file
-- `frcmod` (str): Path to force field parameter file (.frcmod)
-- `buffer` (float, optional): Buffer size around molecule in Å (default: 3.8)
-- `verbose` (bool, optional): Enable verbose output (default: False)
-
-### `validate_files()` Function
-
-```python
-validate_files(topology, mol2, frcmod)
-```
-
-**Parameters:**
-- `topology` (str): Path to AMBER topology file
-- `mol2` (str): Path to MOL2 file
-- `frcmod` (str): Path to frcmod file
-
-**Behavior:** Exits with error code 1 if any file is missing or unreadable.
-
-## Example Workflow
-
-### Complete Example with Test Data
-
-```bash
-# 1. Install dependencies
-pip install numpy parmed
-
-# 2. Run conversion (specifying output filenames)
-python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod
-
-# 3. Check output
-ls -la data.lammps parm.lammps
-# Output: data.lammps  parm.lammps
-```
-
-### Using in LAMMPS
-
-After conversion, you can use the generated files in your LAMMPS input:
-
-```lammps
-# Include the parameters
-include "parm.lammps"
-
-# Read the data file
-read_data "data.lammps"
-
-# Your LAMMPS simulation commands here
-```
-
-#### Running LAMMPS
-
-**Command line usage:**
-```bash
-# Run with AMBER2LAMMPS generated files
-lmp < example_lammps_input.lmp
-
-# Run with InterMol generated files
-lmp < epon_converted.input
-```
-
-#### Example Output
-
-When running the LAMMPS input script, you should see energy output similar to:
-
-```text
-  E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng    
- 2.3161274      6.0940126      12.475827      0             -9.1202197      10.511316      108.01561     -127.64715     -0.31768789     11.765747    
-```
-
-This output shows the breakdown of energy components from the converted system, confirming that the force field parameters have been correctly transferred from AMBER to LAMMPS.
-
 ## Validation
 
 The AMBER2LAMMPS conversion has been validated using **InterMol** to ensure energy accuracy.
@@ -371,9 +325,9 @@ python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.fr
 This will show:
 - File loading progress
 - Number of atoms, bonds, angles, dihedrals found
-- Box dimensions
-- Charge normalization
-- Section-by-section writing progress
+- Box dimensions derived from coordinates and buffer
+- Charge shift applied to neutralize total charge
+- Any warnings about missing atom types or parameters
 
 ## Features Comparison
 
@@ -395,4 +349,4 @@ When making modifications:
 
 **Original Project:** The AMBER2LAMMPS project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-**LAMMPS Distribution:** This contribution to LAMMPS is licensed under GPLv2 and LGPLv2.1 as required for all LAMMPS contributions.
+
