@@ -103,7 +103,7 @@ Below is the sequence implemented in `amber_to_lammps.py` and how options influe
 3. **Atom typing and masses**: The script parses `MASS` entries in `frcmod` to map atom types to sequential IDs and masses. Missing types warn and fall back to type 1.
 4. **Coordinates and charges**: Coordinates and per-atom charges are read from the MOL2 `ATOM` block.
 5. **Box creation (`--buffer`)**: The simulation box is a bounding box around the coordinates expanded equally by the buffer. Increase `--buffer` if atoms are near the box edge; decrease for tighter, smaller boxes.
-6. **Charge normalization**: Total charge is shifted uniformly across atoms so the system is neutral. This mirrors common AMBER→LAMMPS workflows and avoids LAMMPS warnings from slight charge drift.
+6. **Charge normalization**: Total charge is shifted uniformly across atoms so the system is neutral. This avoids LAMMPS warnings from slight charge drift.
 7. **Nonbonded parameters**: `NONBON` terms in `frcmod` become `pair_coeff` entries in the parameter file.
 8. **Topology terms**: Bonds/angles/dihedrals are exported via ParmEd to temporary files and then written to the LAMMPS data/parameter files with matching coefficients.
 9. **Cleanup**: Temporary helper files (`bonds.txt`, `angles.txt`, `dihedrals.txt`) are removed; verbose mode reports all generated counts.
@@ -137,23 +137,7 @@ Use the included EPON example to see the full workflow and rationale.
    ```
    The input `include`s `parm.lammps` first, then `read_data` loads `data.lammps`. Keeping parameters separate makes it easier to swap parameter sets without regenerating coordinates.
 
-### 5) Validate energies (optional but recommended)  
-   - Compare to InterMol conversion: `python convert.py --amb_in epon.prmtop epon.crd --lammps` and run the generated input.  
-   - Energy components should agree within numerical noise; the examples in this repo show matching values.
 
-### 6) Adapting to your own system  
-   - Regenerate `*.mol2` with Antechamber if you change chemistry so charges and atom types stay in sync.  
-   - Keep `frcmod` and `mol2` consistent; mismatched atom type names produce warnings and default to type 1.  
-   - Tune `--buffer` if you change the molecule size or intend to run gas-phase vs solvated systems.
-
-### Common Issues and Solutions
-
-- **Missing/incorrect atom types**: If LAMMPS reports unknown atom types or you see warnings from this script, check that every atom type in `mol2` exists in `frcmod`. Mismatches often come from editing MOL2 by hand or using the wrong GAFF version.  
-- **Bad charges or non-neutral system**: A MOL2 generated without charges (or with mixed charge methods) can lead to unexpected shifts when neutrality is enforced. Regenerate MOL2 with the same charge model (e.g., `antechamber -c bcc`) and confirm charges sum to the intended value.  
-- **Box too small**: If atoms are interacting with periodic images, increase `--buffer`. For larger or elongated molecules, visualize the bounding box or print verbose logs to confirm min/max extents.  
-- **Parameter gaps**: If LAMMPS errors on missing `pair_coeff`/`bond_coeff` entries, the required terms were not present in `frcmod`. Re-run `parmchk2` on the current MOL2 or add missing terms manually.  
-- **Wrong file versions**: Changing the molecule but reusing old `prmtop`/`mol2`/`frcmod` leads to inconsistent topology vs coordinates. Regenerate the full AMBER set whenever chemistry changes.  
-- **Energy mismatches vs reference**: Compare per-term energies (bond, angle, dihedral, nonbonded) against AMBER or InterMol. Large deviations usually trace back to parameter gaps or atom-type mismatches rather than box size.
 
 ## AMBERTools Setup
 
@@ -176,7 +160,7 @@ import subprocess
 cmd1 = "antechamber -j 4 -at gaff2 -dr no -fi pdb -fo mol2 -i epon.pdb -o epon.mol2 -c bcc"
 subprocess.run(cmd1, shell=True)
 
-# Step 2: Generate force field parameters
+# Step 2: Generate force field parameters (ensure -Y option is activated)
 cmd2 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
 subprocess.run(cmd2, shell=True)
 
@@ -276,6 +260,15 @@ if __name__ == "__main__":
     success = convert_single_system()
     sys.exit(0 if success else 1)
 ```
+
+### Common Issues and Solutions When running lammps after input generation 
+
+- **Bad charges or non-neutral system**: A MOL2 generated without charges (or with mixed charge methods) can lead to unexpected shifts when neutrality is enforced. Regenerate MOL2 with the same charge model (e.g., `antechamber -c bcc`) and confirm charges sum to the intended value.  
+- **Box too small**: If atoms are interacting with periodic images, increase `--buffer`. For larger or elongated molecules, visualize the bounding box or print verbose logs to confirm min/max extents.  
+- **Parameter gaps**: If LAMMPS errors on missing `pair_coeff`/`bond_coeff` entries, the required terms were not present in `frcmod`. Re-run `parmchk2` on the current MOL2 or add missing terms manually.  
+- **Wrong file versions**: Changing the molecule but reusing old `prmtop`/`mol2`/`frcmod` leads to inconsistent topology vs coordinates. Regenerate the full AMBER set whenever chemistry changes.  
+- **Energy mismatches vs reference**: Compare per-term energies (bond, angle, dihedral, nonbonded) against AMBER or InterMol. Large deviations usually trace back to parameter gaps or atom-type mismatches rather than box size.
+
 
 ## Validation
 
