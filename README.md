@@ -15,10 +15,78 @@ If you use this software in your research, please cite it as:
 
 ## What You Need
 
-- Structure: A PDB file of your molecule (or a SMILES string you can convert to PDB; see SMILES workflow below).
-- AMBER prep tools: AmberTools (`antechamber`, `parmchk2`, `tleap`) if you need to generate `.prmtop`, `.mol2`, `.frcmod`.
-- Python deps: `parmed` and `numpy` installed via conda or pip (see Installation).
-- LAMMPS: Installed and available on your `PATH` (`which lmp` or `lmp -help` to confirm).
+- **Structure**: A PDB file of your molecule (or a SMILES string you can convert to PDB; see SMILES to PDB workflow below).
+- **AMBER prep tools**: AmberTools (`antechamber`, `parmchk2`, `tleap`) if you need to generate `.prmtop`, `.mol2`, `.frcmod` - installation instructions below.
+- **Python packages**: `parmed` and `numpy` (installation instructions below).
+- **LAMMPS**: Installed and available on your `PATH` (`which lmp` or `lmp -help` to confirm) - installation instructions below.
+
+### SMILES to PDB Workflow
+
+You can use `obabel` to generate a PDB file from SMILES.
+
+#### Installation
+
+```bash
+# macOS
+brew install open-babel
+
+# conda
+conda install -c openbabel openbabel
+
+# Ubuntu/Debian
+sudo apt-get install openbabel
+```
+
+#### Generate PDB from SMILES
+
+```bash
+# Basic conversion
+obabel -:CCO -opdb -O ethanol.pdb --gen3d
+
+# With explicit hydrogens (recommended)
+obabel -:CCO -h -opdb -O ethanol.pdb --gen3d
+
+# Other examples
+obabel -:c1ccccc1 -opdb -O benzene.pdb --gen3d  # Benzene
+obabel -:"CC(=O)OC1=CC=CC=C1C(=O)O" -opdb -O aspirin.pdb --gen3d  # Aspirin
+```
+
+
+### AmberTools Installation
+
+Install AmberTools from https://ambermd.org/GetAmber.php#ambertools and activate the environment:
+
+```bash
+conda activate Ambertools23  # or your AMBERTools version
+```
+
+### Python Package Installation
+
+### Prerequisites
+
+- Python 3.6 or higher
+- conda (recommended) or pip
+
+### Required Dependencies
+
+**Using conda (recommended)**
+
+```bash
+conda install -c conda-forge parmed numpy
+```
+
+**Using pip**
+
+```bash
+pip install parmed numpy
+```
+
+### LAMMPS Installation
+
+#### Install from source
+
+Download from https://lammps.org/ and follow the build instructions. **Include these packages while compiling:** `MOLECULE KSPACE EXTRA-MOLECULE` (otherwise the generated input files will not run).
+
 
 ## Command Reference
 
@@ -70,31 +138,8 @@ amber2lammps(
 )
 ```
 
-## Installation
 
-### Prerequisites
 
-- Python 3.6 or higher
-- conda (recommended) or pip
-
-### Required Dependencies
-
-**Using conda (recommended)**
-```bash
-conda install -c conda-forge parmed numpy
-```
-
-**Using pip**
-```bash
-pip install parmed numpy
-```
-
-### LAMMPS Installation
-
-LAMMPS is required to run the generated input files.
-
-#### Install from source
-Download from https://lammps.org/ and follow the build instructions. **Include these packages while compiling:** `MOLECULE KSPACE EXTRA-MOLECULE`
 
 ## Conversion Logic and Options
 
@@ -113,36 +158,7 @@ Below is the sequence implemented in `amber_to_lammps.py` and how various option
 
 ## Tutorial (End-to-End Workflow)
 
-The pdb of the molecule is required for this tutorial. If you only have a SMILES string, see the **SMILES to PDB** section below.
 
-### SMILES to PDB Workflow
-
-You can use `obabel` to generate a PDB file from SMILES.
-
-#### Installation
-```bash
-# macOS
-brew install open-babel
-
-# conda
-conda install -c openbabel openbabel
-
-# Ubuntu/Debian
-sudo apt-get install openbabel
-```
-
-#### Generate PDB from SMILES
-```bash
-# Basic conversion
-obabel -:CCO -opdb -O ethanol.pdb --gen3d
-
-# With explicit hydrogens (recommended)
-obabel -:CCO -h -opdb -O ethanol.pdb --gen3d
-
-# Other examples
-obabel -:c1ccccc1 -opdb -O benzene.pdb --gen3d  # Benzene
-obabel -:"CC(=O)OC1=CC=CC=C1C(=O)O" -opdb -O aspirin.pdb --gen3d  # Aspirin
-```
 
 After generating the PDB file, you can follow steps 1-3 of the tutorial below.
 
@@ -150,15 +166,7 @@ After generating the PDB file, you can follow steps 1-3 of the tutorial below.
 
 ### Usage With CLI
 
-### 1. AMBER Workflow (Generating Input Files)
-
-#### Prerequisites
-
-Install AmberTools from https://ambermd.org/GetAmber.php#ambertools and activate the environment:
-
-```bash
-conda activate Ambertools23  # or your AMBERTools version
-```
+#### 1. AMBER Workflow (Generating Input Files)
 
 Use the following python code to generate AMBER input files:
 
@@ -168,7 +176,7 @@ import subprocess
 # Generate MOL2 file with charges
 cmd1 = "antechamber -j 4 -at gaff2 -dr yes -fi pdb -fo mol2 -i epon.pdb -o epon.mol2 -c bcc"
 subprocess.run(cmd1, shell=True)
-#For details on the antechamber command, see AMBER Manual https://ambermd.org/Manuals.php
+# For details on the antechamber command, see AMBER Manual https://ambermd.org/Manuals.php
 
 # Generate force field parameters (ensure -Y option is activated)
 cmd2 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
@@ -193,12 +201,12 @@ file_path = './leap.log'
 # Output files generated: epon.prmtop, epon.crd, epon.mol2, epon.frcmod
 ```
 
-### 2. Run the Conversion
+#### 2. Run the Conversion
 ```bash
 python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 4.5
 ```
 
-### 3. Run LAMMPS
+#### 3. Run LAMMPS
 Use the provided `example_lammps_input.lmp`:
 
 ```bash
@@ -261,7 +269,7 @@ You will get a WARNING that the system is not charge neutral like the following
 
 WARNING: System is not charge neutral, net charge = -0.002996
 
-This is because when generated from antechamber AM1-BCC method carry slight excess charge
+This is because charges generated from antechamber AM1-BCC method carry slight excess charge and the maginitude of the charge is greater than 1e-6
 
 **Output From amber2lammps Conversion (Step 3 of Tutorial)**
 
@@ -274,7 +282,7 @@ lmp < example_lammps_input.lmp
 E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng
 2.3161274      6.0940126      12.475827      0             -9.1202197      10.511316      108.01561     -127.64715     -0.31768789     11.765747
 ```
-No WARNING messages. The charges are scaled such that the system is charge neutral.
+No WARNING messages. Charge normalization is applied to make the system charge neutral.
 
 ## Contributing
 
