@@ -113,8 +113,6 @@ Below is the sequence implemented in `amber_to_lammps.py` and how various option
 
 ## Tutorial (End-to-End Workflow)
 
-### Quick Start
-
 The pdb of the molecule is required for this tutorial. If you only have a SMILES string, see the **SMILES to PDB** section below.
 
 ### SMILES to PDB Workflow
