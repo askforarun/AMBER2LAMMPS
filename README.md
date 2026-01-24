@@ -13,6 +13,13 @@ If you use this software in your research, please cite it as:
 
 **DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
 
+## What You Need
+
+- Structure: A PDB file of your molecule (or a SMILES string you can convert to PDB; see SMILES workflow below).
+- AMBER prep tools: AmberTools (`antechamber`, `parmchk2`, `tleap`) if you need to generate `.prmtop`, `.mol2`, `.frcmod`.
+- Python deps: `parmed` and `numpy` installed via conda or pip (see Installation).
+- LAMMPS: Installed and available on your `PATH` (`which lmp` or `lmp -help` to confirm).
+
 ## Command Reference
 
 ### CLI
@@ -20,6 +27,8 @@ If you use this software in your research, please cite it as:
 ```bash
 python3 amber_to_lammps.py <data_file> <param_file> <topology> <mol2> <frcmod> [options]
 ```
+
+Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate parameter file (`<param_file>`, e.g., `parm.lammps`).
 
 | Argument | Required? | Description |
 | --- | --- | --- |
@@ -82,7 +91,7 @@ pip install parmed numpy
 
 ### LAMMPS Installation
 
-LAMMPS is required to run the generated input files. 
+LAMMPS is required to run the generated input files.
 
 #### Install from source
 Download from https://lammps.org/ and follow the build instructions. **Include these packages while compiling:** `MOLECULE KSPACE EXTRA-MOLECULE`
