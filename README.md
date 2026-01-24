@@ -16,7 +16,7 @@ If you use this software in your research, please cite it as:
 ## What You Need
 
 - **Structure**: A PDB file of your molecule (or a SMILES string you can convert to PDB; see SMILES to PDB workflow below).
-- **AMBER prep tools**: AmberTools (`antechamber`, `parmchk2`, `tleap`) if you need to generate `.prmtop`, `.mol2`, `.frcmod` - installation instructions below.
+- **AMBER prep tools**: `.prmtop`, `.mol2`, `.frcmod` files. AmberTools (`antechamber`, `parmchk2`, `tleap`) is needed - See instructions below on how to install and generate these files.
 - **Python packages**: `parmed` and `numpy` (installation instructions below).
 - **LAMMPS**: Installed and available on your `PATH` (`which lmp` or `lmp -help` to confirm) - installation instructions below.
 
@@ -58,6 +58,46 @@ Install AmberTools from https://ambermd.org/GetAmber.php#ambertools and activate
 
 ```bash
 conda activate Ambertools23  # or your AMBERTools version
+
+```
+
+### Generate AMBER input files (`prmtop`, `mol2`, `frcmod` files)
+
+Use the following python code to generate AMBER input files:
+
+```python
+import subprocess
+
+# Set your PDB filename here
+pdb_file = "epon.pdb"  # Replace with your PDB filename
+base_name = pdb_file.replace(".pdb", "")  # Extract base name from PDB filename
+
+# Generate MOL2 file with charges from PDB file
+cmd1 = f"antechamber -j 4 -at gaff2 -dr yes -fi pdb -fo mol2 -i {pdb_file} -o {base_name}.mol2 -c bcc"
+subprocess.run(cmd1, shell=True)
+# For details on the antechamber command, see AMBER Manual https://ambermd.org/Manuals.php
+
+# Generate force field parameters (ensure -Y option is activated)
+cmd2 = f"parmchk2 -i {base_name}.mol2 -o {base_name}.frcmod -f mol2 -a Y"
+subprocess.run(cmd2, shell=True)
+
+# Create tleap input file
+with open("tleap.in", "w") as f:
+    f.write("source leaprc.gaff2\n")
+    f.write(f"SUS = loadmol2 {base_name}.mol2\n")
+    f.write("check SUS\n")
+    f.write(f"loadamberparams {base_name}.frcmod\n")
+    f.write(f"saveamberparm SUS {base_name}.prmtop {base_name}.crd\n")
+    f.write("quit")
+
+# Run tleap to generate AMBER files
+cmd3 = "tleap -f tleap.in"
+subprocess.run(cmd3, shell=True)
+
+# Check log file for any errors
+file_path = './leap.log'
+
+# Output files generated: epon.prmtop, epon.crd, epon.mol2, epon.frcmod
 ```
 
 ### Python Package Installation
@@ -168,38 +208,6 @@ After generating the PDB file, you can follow steps 1-3 of the tutorial below.
 
 #### 1. AMBER Workflow (Generating Input Files)
 
-Use the following python code to generate AMBER input files:
-
-```python
-import subprocess
-
-# Generate MOL2 file with charges
-cmd1 = "antechamber -j 4 -at gaff2 -dr yes -fi pdb -fo mol2 -i epon.pdb -o epon.mol2 -c bcc"
-subprocess.run(cmd1, shell=True)
-# For details on the antechamber command, see AMBER Manual https://ambermd.org/Manuals.php
-
-# Generate force field parameters (ensure -Y option is activated)
-cmd2 = "parmchk2 -i epon.mol2 -o epon.frcmod -f mol2 -a Y"
-subprocess.run(cmd2, shell=True)
-
-# Create tleap input file
-with open("tleap.in", "w") as f:
-    f.write("source leaprc.gaff2\n")
-    f.write("SUS = loadmol2 epon.mol2\n")
-    f.write("check SUS\n")
-    f.write("loadamberparams epon.frcmod\n")
-    f.write("saveamberparm SUS epon.prmtop epon.crd\n")
-    f.write("quit")
-
-# Run tleap to generate AMBER files
-cmd3 = "tleap -f tleap.in"
-subprocess.run(cmd3, shell=True)
-
-# Check log file for any errors
-file_path = './leap.log'
-
-# Output files generated: epon.prmtop, epon.crd, epon.mol2, epon.frcmod
-```
 
 #### 2. Run the Conversion
 ```bash
