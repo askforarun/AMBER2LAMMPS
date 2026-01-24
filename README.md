@@ -105,7 +105,7 @@ Below is the sequence implemented in `amber_to_lammps.py` and how various option
 3. **Atom typing and masses**: The script parses `MASS` entries in `frcmod` to map atom types to sequential IDs and masses. Missing types warn and fall back to type 1.
 4. **Coordinates and charges**: Coordinates and per-atom charges are read from the MOL2 `ATOM` block.
 5. **Box creation (`--buffer`)**: The simulation box is a bounding box around the coordinates expanded equally by the buffer. Increase `--buffer` if atoms are near the box edge; decrease for tighter, smaller boxes.
-6. **Charge normalization**: Total charge is shifted uniformly across atoms so the system is neutral. This introduces a small (typically negligible) offset to whatever charge method you used (e.g., RESP, AM1-BCC) and cannot be disabled, so consider this if you need exact reproducibility.
+6. **Charge normalization**: Total charge is shifted uniformly across atoms so the system is neutral, but only if |net charge| > 1e-6. This introduces a small (typically negligible) offset to whatever charge method you used (e.g., RESP, AM1-BCC); if the net charge is within tolerance, no shift is applied.
 7. **Nonbonded parameters**: `NONBON` terms in `frcmod` become `pair_coeff` entries in the parameter file.
 8. **Topology terms**: Bonds/angles/dihedrals are exported via ParmEd to temporary files and then written to the LAMMPS data/parameter files with matching coefficients.
 9. **Cleanup**: Temporary helper files (`bonds.txt`, `angles.txt`, `dihedrals.txt`) are removed; verbose mode reports all generated counts.
@@ -261,7 +261,7 @@ You will get a WARNING that the system is not charge neutral like the following
 
 WARNING: System is not charge neutral, net charge = -0.002996
 
-This is because when charges generated from antechamber carry slight excess charge
+This is because when generated from antechamber AM1-BCC method carry slight excess charge
 
 **Output From amber2lammps Conversion (Step 3 of Tutorial)**
 

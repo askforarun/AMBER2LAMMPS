@@ -188,16 +188,18 @@ def amber2lammps(data_file, param_file, topology, mol2, frcmod, buffer=3.8, verb
         f.write("\nAtoms\n\n")
                 
     # Normalize charges to ensure neutrality
+    net_charge = float(np.sum(charges))
     if verbose:
-        print(f"Normalizing charges (total charge: {np.sum(charges):.6f})...")
+        print(f"Normalizing charges (total charge: {net_charge:.6f})...")
     
-    if np.sum(charges) >= 0:
-        charges = charges - (abs(np.sum(charges))/len(charges))
-    elif np.sum(charges) < 0:
-        charges = charges + (abs(np.sum(charges))/len(charges))
-    
-    if verbose:
-        print(f"Normalized total charge: {np.sum(charges):.6f}")
+    charge_tol = 1e-6
+    if abs(net_charge) > charge_tol:
+        shift = net_charge / len(charges)
+        charges = [c - shift for c in charges]
+        if verbose:
+            print(f"Applied uniform shift {-shift:.6f} per atom; normalized total charge: {np.sum(charges):.6f}")
+    elif verbose:
+        print(f"Net charge within tolerance ({charge_tol}); no shift applied.")
 
     # Parse nonbonded parameters from frcmod
     if verbose:
@@ -335,7 +337,6 @@ if __name__ == "__main__":
 
     
     
-
 
 
 
