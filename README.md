@@ -179,11 +179,12 @@ subprocess.run(cmd, shell=True)
 
 1. **Input validation**: `validate_files` checks that `topology`, `mol2`, and `frcmod` exist and are readable.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, and dihedrals from `.prmtop`; `frcmod` provides masses and nonbonded terms.
-3. **Coordinates and box**: Coordinates and charges come from the MOL2 `ATOM` block. The box is a bounding box expanded by the `buffer`.
-4. **Charge normalization**: If `|net charge| > 1e-6`, charges are shifted uniformly to make the system neutral.
-5. **Nonbonded coefficients**: `NONBON` entries in `frcmod` become `pair_coeff` terms in `parm.lammps`.
-6. **Bonded coefficients**: Bond, angle, and dihedral coefficients come from the ParmEd-exported AMBER terms (via `frcmod`/`.prmtop`) and are written into the data/parameter files.
-7. **Export and cleanup**: Topology terms are written to LAMMPS data/parameter files; temporary helper files are removed.
+3. **Atom typing and masses**: `MASS` entries in `frcmod` map atom types to sequential IDs and masses; missing types warn and fall back to type 1.
+4. **Coordinates and box**: Coordinates and charges come from the MOL2 `ATOM` block. The box is a bounding box expanded by the `buffer`.
+5. **Charge normalization**: If `|net charge| > 1e-6`, charges are shifted uniformly to make the system neutral.
+6. **Nonbonded coefficients**: `NONBON` entries in `frcmod` become `pair_coeff` terms in `parm.lammps`.
+7. **Bonded coefficients**: Bond, angle, and dihedral coefficients come from the ParmEd-exported AMBER terms (via `frcmod`/`.prmtop`) and are written into the data/parameter files.
+8. **Export and cleanup**: Topology terms are written to LAMMPS data/parameter files; temporary helper files are removed.
 
 **Defaults**
 
@@ -390,8 +391,6 @@ converting.
 - **Net charge not zero**: Charge normalization shifts charges; verify source charges and rerun if
 unintended.
 - **Atoms too close or outside box**: Increase `--buffer` and rerun; inspect verbose box extents.
-- **Pair coefficients missing in LAMMPS**: Ensure `frcmod` covers all types; rerun conversion after
-fixing.
 - **LAMMPS run errors about packages**: Rebuild LAMMPS with `MOLECULE`, `KSPACE`, `EXTRA-MOLECULE`.
 
 ## Contributing
