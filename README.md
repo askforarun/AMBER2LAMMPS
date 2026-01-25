@@ -383,6 +383,17 @@ E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdw
 ```
 No WARNING messages. Charge normalization is applied to make the system charge neutral.
 
+## Troubleshooting
+
+- **Missing MASS/atom types**: Check `ethanol.frcmod` warnings; add types or correct `frcmod` before
+converting.
+- **Net charge not zero**: Charge normalization shifts charges; verify source charges and rerun if
+unintended.
+- **Atoms too close or outside box**: Increase `--buffer` and rerun; inspect verbose box extents.
+- **Pair coefficients missing in LAMMPS**: Ensure `frcmod` covers all types; rerun conversion after
+fixing.
+- **LAMMPS run errors about packages**: Rebuild LAMMPS with `MOLECULE`, `KSPACE`, `EXTRA-MOLECULE`.
+
 ## Contributing
 
 When making modifications:
