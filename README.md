@@ -255,14 +255,14 @@ easier to swap parameter sets without regenerating coordinates.
 #### More CLI examples (using bundled files)
 
 ```bash
-# Standard conversion with default buffer
-python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod
+# Write outputs to a subfolder to keep the repo clean
+mkdir -p out && python3 amber_to_lammps.py out/epon.data out/epon.parm epon.prmtop epon.mol2 epon.frcmod
 
-# Custom buffer and verbose logging
-python3 amber_to_lammps.py data_buffer5.lammps parm_buffer5.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 5.0
+# Tighter box for small molecules (less vacuum padding)
+python3 amber_to_lammps.py epon_smallbox.data epon_smallbox.parm epon.prmtop epon.mol2 epon.frcmod -b 2.5
 
-# Custom output names
-python3 amber_to_lammps.py epon_system.data epon_params.parm epon.prmtop epon.mol2 epon.frcmod --verbose
+# Gas-phase style with generous padding and verbose logging
+python3 amber_to_lammps.py epon_gas.data epon_gas.parm epon.prmtop epon.mol2 epon.frcmod --verbose -b 8.0
 ```
 
 ### Usage with Python API
@@ -295,44 +295,44 @@ print("Completed conversion")
 
 #### More API examples
 
-- Validate then convert with a custom buffer
+- Use pathlib paths and quiet mode
+
+```python
+from pathlib import Path
+from amber_to_lammps import amber2lammps
+
+out_dir = Path("outputs")
+out_dir.mkdir(exist_ok=True)
+
+amber2lammps(
+    data_file=out_dir / "epon.data",
+    param_file=out_dir / "epon.parm",
+    topology=Path("epon.prmtop"),
+    mol2=Path("epon.mol2"),
+    frcmod=Path("epon.frcmod"),
+    buffer=4.0,
+    verbose=False,
+)
+```
+
+- Sweep buffer values to choose a box size
 
 ```python
 from amber_to_lammps import amber2lammps, validate_files
 
 validate_files("epon.prmtop", "epon.mol2", "epon.frcmod")
-amber2lammps(
-    data_file="data.lammps",
-    param_file="parm.lammps",
-    topology="epon.prmtop",
-    mol2="epon.mol2",
-    frcmod="epon.frcmod",
-    buffer=5.0,
-    verbose=True,
-)
-```
 
-- Batch convert multiple molecules with error handling
-
-```python
-from amber_to_lammps import amber2lammps, validate_files
-
-molecules = ["ethanol", "benzene", "aspirin"]
-for mol in molecules:
-    try:
-        validate_files(f"{mol}.prmtop", f"{mol}.mol2", f"{mol}.frcmod")
-        amber2lammps(
-            data_file=f"{mol}.data",
-            param_file=f"{mol}.parm",
-            topology=f"{mol}.prmtop",
-            mol2=f"{mol}.mol2",
-            frcmod=f"{mol}.frcmod",
-            buffer=4.0,
-            verbose=False,
-        )
-        print(f"OK: {mol}")
-    except FileNotFoundError as e:
-        print(f"Skip {mol}: {e}")
+for buffer in (3.0, 4.0, 5.0):
+    amber2lammps(
+        data_file=f"epon_buffer{buffer}.data",
+        param_file=f"epon_buffer{buffer}.parm",
+        topology="epon.prmtop",
+        mol2="epon.mol2",
+        frcmod="epon.frcmod",
+        buffer=buffer,
+        verbose=True,
+    )
+    print(f"Completed buffer={buffer}")
 ```
 
 
