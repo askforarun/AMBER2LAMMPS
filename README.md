@@ -252,17 +252,20 @@ lmp < example_lammps_input.lmp
 parameters) and `read_data` loads `data.lammps` (coordinates). Keeping parameters separate makes it
 easier to swap parameter sets without regenerating coordinates.
 
-#### More CLI examples (using bundled files)
+#### Additional CLI examples
 
 ```bash
-# Write outputs to a subfolder to keep the repo clean
-mkdir -p out && python3 amber_to_lammps.py out/epon.data out/epon.parm epon.prmtop epon.mol2 epon.frcmod
+# Custom buffer and verbose logging (adds 5 Å padding)
+python3 amber_to_lammps.py my_data.lammps my_params.lammps \
+   ethanol.prmtop ethanol.mol2 ethanol.frcmod --verbose -b 5.0
 
-# Tighter box for small molecules (less vacuum padding)
-python3 amber_to_lammps.py epon_smallbox.data epon_smallbox.parm epon.prmtop epon.mol2 epon.frcmod -b 2.5
+# Custom output names
+python3 amber_to_lammps.py system.data system.parm system.prmtop \
+   system.mol2 system.frcmod
 
-# Gas-phase style with generous padding and verbose logging
-python3 amber_to_lammps.py epon_gas.data epon_gas.parm epon.prmtop epon.mol2 epon.frcmod --verbose -b 8.0
+# Minimal output without verbose logging
+python3 amber_to_lammps.py small.data small.parm \
+   ethanol.prmtop ethanol.mol2 ethanol.frcmod -b 3.0
 ```
 
 ### Usage with Python API
@@ -293,46 +296,46 @@ amber2lammps(
 print("Completed conversion")
 ```
 
-#### More API examples
-
-- Use pathlib paths and quiet mode
+#### Additional API examples
 
 ```python
-from pathlib import Path
+# Example 1: Basic conversion without validation
 from amber_to_lammps import amber2lammps
 
-out_dir = Path("outputs")
-out_dir.mkdir(exist_ok=True)
-
 amber2lammps(
-    data_file=out_dir / "epon.data",
-    param_file=out_dir / "epon.parm",
-    topology=Path("epon.prmtop"),
-    mol2=Path("epon.mol2"),
-    frcmod=Path("epon.frcmod"),
-    buffer=4.0,
-    verbose=False,
+    data_file='system.data',
+    param_file='system.parm',
+    topology='system.prmtop',
+    mol2='system.mol2',
+    frcmod='system.frcmod'
 )
-```
 
-- Sweep buffer values to choose a box size
+# Example 2: Custom buffer and verbose output
+amber2lammps(
+    data_file='molecule.data',
+    param_file='molecule.parm',
+    topology='molecule.prmtop',
+    mol2='molecule.mol2',
+    frcmod='molecule.frcmod',
+    buffer=5.0,
+    verbose=True
+)
 
-```python
+# Example 3: Batch processing multiple molecules
 from amber_to_lammps import amber2lammps, validate_files
 
-validate_files("epon.prmtop", "epon.mol2", "epon.frcmod")
+molecules = ['ethanol', 'benzene', 'aspirin']
 
-for buffer in (3.0, 4.0, 5.0):
+for mol in molecules:
+    validate_files(f'{mol}.prmtop', f'{mol}.mol2', f'{mol}.frcmod')
     amber2lammps(
-        data_file=f"epon_buffer{buffer}.data",
-        param_file=f"epon_buffer{buffer}.parm",
-        topology="epon.prmtop",
-        mol2="epon.mol2",
-        frcmod="epon.frcmod",
-        buffer=buffer,
-        verbose=True,
+        data_file=f'{mol}.data',
+        param_file=f'{mol}.parm',
+        topology=f'{mol}.prmtop',
+        mol2=f'{mol}.mol2',
+        frcmod=f'{mol}.frcmod',
+        verbose=True
     )
-    print(f"Completed buffer={buffer}")
 ```
 
 
