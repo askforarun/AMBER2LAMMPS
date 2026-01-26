@@ -3,23 +3,41 @@
 A Python utility to convert AMBER topology, forcefield, and coordinate files to LAMMPS data format.
 Provides an enhanced CLI, a Python API, and validation-oriented error handling.
 
+## What This Tool Does
+
+This tool helps you run molecular dynamics simulations in **LAMMPS** when you have your molecular system set up in **AMBER** format.
+
+**Typical workflow:**
+1. Start with a molecular structure (PDB file or SMILES string)
+2. Use AMBER tools to create AMBER files (`.prmtop`, `.mol2`, `.frcmod`)
+3. **Convert AMBER files to LAMMPS format** using this tool
+4. Run your simulation in LAMMPS
+
+**What gets converted:**
+- **`.prmtop`** (topology file): Contains bonds, angles, atom types → LAMMPS data file
+- **`.mol2`** (coordinates file): Contains atomic positions and charges → LAMMPS coordinates
+- **`.frcmod`** (force field file): Contains interaction parameters → LAMMPS parameters
+
+**What you get as output:**
+- **LAMMPS data file** (e.g., `data.lammps`): Contains atomic coordinates, box dimensions, and molecular topology
+- **LAMMPS parameter file** (e.g., `parm.lammps`): Contains force field parameters for bonds, angles, and nonbonded interactions
+
+
 ## Table of Contents
 - [Open Source](#open-source)
 - [Citation](#citation)
+- [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
-- [Quickstart (epon example)](#quickstart-epon-example)
 - [Installation](#installation)
   - [AmberTools](#ambertools)
   - [Python Packages](#python-packages)
   - [LAMMPS](#lammps)
 - [SMILES to PDB Workflow](#smiles-to-pdb-workflow)
 - [Command Reference](#command-reference)
-  - [CLI](#cli)
-  - [Python API](#python-api)
 - [How It Works](#how-it-works)
 - [Tutorial](#tutorial)
-  - [Usage With CLI](#usage-with-cli)
-  - [Usage with Python API](#usage-with-python-api)
+  - [CLI with LAMMPS execution](#cli-with-lammps-execution)
+  - [Python API with LAMMPS execution](#python-api-with-lammps-execution)
 - [Validation with InterMol](#validation-with-intermol)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -35,33 +53,24 @@ If you use this software in your research, please cite it as:
 
 **DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
 
+## Platform Compatibility
+
+AMBER2LAMMPS has been validated and tested on:
+
+- **Linux** (Ubuntu, CentOS, Red Hat, Debian) - Fully tested and validated
+- **macOS** (Intel and Apple Silicon) - Fully tested
+- **Windows** (Windows 10/11 with WSL2 and native Python) - Tested with WSL2 and native Python
+- **WSL2 is recommended for Windows users for best compatibility.**
+
 ## What You Need
 
 - **Structure input**: A PDB file of your molecule (or a SMILES string you can convert to PDB; see the workflow below).
-- **AMBER prep tools**: AmberTools (`antechamber`, `parmchk2`, `tleap`) to generate `.prmtop`, `.mol2`, and `.frcmod`.
-- **Python**: Python 3.8+ with `parmed` and `numpy`.
+- **AMBER prep tools**: AmberTools (`antechamber`, `parmchk2`, `tleap`) to generate AMBER files:
+  - **`.prmtop`**: Topology file defining molecular structure (bonds, angles, atom types)
+  - **`.mol2`**: Coordinate file with atomic positions and partial charges
+  - **`.frcmod`**: Force field parameters defining how atoms interact
+- **Python**: Python 3.8+ with `parmed` (for reading AMBER files) and `numpy` (for calculations).
 - **LAMMPS**: A build that includes `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
-
-## Quickstart (epon example)
-
-Run from the repository root using the bundled `epon` files.
-
-```bash
-# 1) Activate AmberTools
-conda activate AmberTools23  # or source the AmberTools env for your install
-
-# 2) Install Python deps (if needed)
-conda install -c conda-forge parmed numpy  # or: pip install parmed numpy
-
-# 3) Convert AMBER to LAMMPS
-python3 amber_to_lammps.py data.lammps parm.lammps epon.prmtop epon.mol2 epon.frcmod --verbose -b 3.8
-
-# 4) Run LAMMPS with the provided input
-lmp < example_lammps_input.lmp
-```
-
-Outputs: `data.lammps` (coordinates/box) and `parm.lammps` (parameters). The example input file
-reads both.
 
 ## Installation
 
@@ -122,12 +131,6 @@ obabel -:"CC(=O)OC1=CC=CC=C1C(=O)O" -opdb -O aspirin.pdb --gen3d  # Aspirin
 
 ## Command Reference
 
-### CLI
-
-```bash
-python3 amber_to_lammps.py <data_file> <param_file> <topology> <mol2> <frcmod> [options]
-```
-
 Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate parameter file
 (`<param_file>`, e.g., `parm.lammps`).
 
@@ -139,45 +142,13 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `mol2` | yes | MOL2 coordinate file (with charges) |
 | `frcmod` | yes | AMBER force field parameter file (`.frcmod`) |
 | `-b, --buffer` | optional | Vacuum padding (Å) for the simulation box. Default: `3.8`. |
-| `--verbose` | optional | Print step-by-step progress, counts, and box size. |
+| `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
 | `-h, --help` | optional | Show help message. |
-
-### Python API
-
-```python
-from amber_to_lammps import amber2lammps, validate_files
-import subprocess
-
-data_file = 'data.lammps'
-param_file = 'parm.lammps'
-topology = 'epon.prmtop'
-mol2 = 'epon.mol2'
-frcmod = 'epon.frcmod'
-
-# Optional validation
-validate_files(topology, mol2, frcmod)
-
-# Run conversion
-amber2lammps(
-    data_file=data_file,
-    param_file=param_file,
-    topology=topology,
-    mol2=mol2,
-    frcmod=frcmod,
-    buffer=3.8,
-    verbose=True,
-)
-
-# Run LAMMPS on the generated files
-cmd = "lmp -in example_lammps_input.lmp"
-subprocess.run(cmd, shell=True)
-```
-
 
 
 ## How It Works
 
-1. **Input validation**: `validate_files` checks that `topology`, `mol2`, and `frcmod` exist and are readable.
+1. **Input validation**: `validate_files` checks that `topology`, `mol2`, and `frcmod` exist and are readable. The CLI performs this validation automatically, while it's optional for the Python API.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, and dihedrals from `.prmtop`; `frcmod` provides masses and nonbonded terms.
 3. **Atom typing and masses**: `MASS` entries in `frcmod` map atom types to sequential IDs and masses; missing types warn and fall back to type 1.
 4. **Coordinates and box**: Coordinates and charges come from the MOL2 `ATOM` block. The box is a bounding box expanded by the `buffer`.
@@ -186,20 +157,12 @@ subprocess.run(cmd, shell=True)
 7. **Bonded coefficients**: Bond, angle, and dihedral coefficients come from the ParmEd-exported AMBER terms (via `frcmod`/`.prmtop`) and are written into the data/parameter files.
 8. **Export and cleanup**: Topology terms are written to LAMMPS data/parameter files; temporary helper files are removed.
 
-**Defaults**
-
-| Option | Default | Effect |
-| --- | --- | --- |
-| `buffer` | `3.8` Å | Extra padding applied to the bounding box |
-| `verbose` | `False` | Prints counts, box extents, and net charge |
-| `validate_files` (API) | Off by default | Call explicitly if you want preflight checks |
-
 ## Tutorial
 
 The tutorial assumes you are running from an AMBER2LAMMPS checkout or otherwise have access to
 `amber_to_lammps.py`.
 
-### Usage With CLI
+### CLI with LAMMPS execution
 
 #### 1. Generate AMBER Input Files (`prmtop`, `mol2`, `frcmod`)
 
@@ -267,9 +230,12 @@ python3 amber_to_lammps.py system.data system.parm system.prmtop \
 # Minimal output without verbose logging
 python3 amber_to_lammps.py small.data small.parm \
    ethanol.prmtop ethanol.mol2 ethanol.frcmod -b 3.0
+
+# Using absolute paths with custom buffer
+python3 amber_to_lammps.py /home/user/lammps/output/data.lammps /home/user/lammps/output/param.lammps /home/user/amber/topology.prmtop /home/user/amber/coords.mol2 /home/user/amber/params.frcmod -b 4.5
 ```
 
-### Usage with Python API
+### Python API with LAMMPS execution
 
 ```python
 from amber_to_lammps import amber2lammps, validate_files
