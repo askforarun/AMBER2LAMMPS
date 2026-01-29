@@ -41,15 +41,15 @@ QMMM: RHF CALCULATION, NO. OF DOUBLY OCCUPIED LEVELS = 68
 | QMMM:                              norbs =      128
 | QMMM:    diag iterations used for timing =       10
 | QMMM:
-| QMMM:              Internal diag routine = 0.024713 seconds
-| QMMM:                 Dspev diag routine = 0.015863 seconds
-| QMMM:                Dspevd diag routine = 0.008651 seconds
-| QMMM:                Dspevx diag routine = 0.058558 seconds
-| QMMM:                 Dsyev diag routine = 0.015930 seconds
-| QMMM:                Dsyevd diag routine = 0.006997 seconds
-| QMMM:                Dsyevr diag routine = 0.010746 seconds
+| QMMM:              Internal diag routine = 0.042677 seconds
+| QMMM:                 Dspev diag routine = 0.023777 seconds
+| QMMM:                Dspevd diag routine = 0.011611 seconds
+| QMMM:                Dspevx diag routine = 0.105634 seconds
+| QMMM:                 Dsyev diag routine = 0.024407 seconds
+| QMMM:                Dsyevd diag routine = 0.010224 seconds
+| QMMM:                Dsyevr diag routine = 0.017551 seconds
 | QMMM:
-| QMMM:                Pseudo diag routine = 0.010122 seconds
+| QMMM:                Pseudo diag routine = 0.019627 seconds
 | QMMM: Pseudo diagonalization appears to be slower than regular
 | QMMM: diagonalization. Setting pseudo_diag=0 for optimum performance.
 | QMMM:
