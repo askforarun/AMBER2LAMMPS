@@ -59,7 +59,7 @@ Tested and validated on:
 
 ## What You Need
 
-- **Structure input**: A PDB file (or a SMILES string you convert to PDB; see workflow below).
+- **Structure input**: A PDB file (or a SMILES string that you convert to PDB; see workflow below).
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`.
 - **Python**: Python 3.8+ with `parmed` and `numpy`.
 - **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
@@ -88,7 +88,7 @@ pip install parmed numpy
 ### LAMMPS
 
 Download LAMMPS (https://lammps.org/) and build a recent stable version with packages `MOLECULE`,
-`KSPACE`, and `EXTRA-MOLECULE` enabled. Verify your install with `lmp -h` or `which lmp`.
+`KSPACE`, and `EXTRA-MOLECULE` enabled. Verify your installation with `lmp` or `which lmp`.
 
 ## SMILES to PDB Workflow
 
