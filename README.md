@@ -341,7 +341,7 @@ lmp < epon_converted.input
 E_bond        E_angle        E_dihed        E_impro         E_pair         E_vdwl         E_coul         E_long         E_tail         PotEng
 2.3161274      6.0940384      12.475809      0             -8.8739005      10.824738      97.869973     -117.56861     -0.0044166818   12.012074
 ```
-InterMol reports slight non-neutrality (e.g., `net charge = -0.002996`) because it doesn't renormalize AM1-BCC charges.
+Results from InterMol conversion exhibit slight non-neutrality (e.g., net charge = -0.002996) because AM1-BCC charges are not renormalized.
 
 **Output from AMBER2LAMMPS (Tutorial Step 3)**
 
