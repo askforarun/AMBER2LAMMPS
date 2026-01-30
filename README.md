@@ -247,7 +247,7 @@ python3 amber_to_lammps.py /home/user/lammps/output/data.lammps /home/user/lammp
 # Keep temporary files for debugging
 python3 amber_to_lammps.py debug_data.lammps debug_parm.lammps molecule.prmtop molecule.crd --charge 0 --keep-temp --verbose
 ```
-`example_lammps_input.lmp` includes `parm.lammps` and reads `data.lammps`; adjust those paths if you rename outputs.
+`example_lammps_input.lmp` includes `parm.lammps` and reads `data.lammps`; adjust those paths and the file names in example_lammps_input.lmp if you rename outputs.
 
 ### Python API with LAMMPS execution
 
