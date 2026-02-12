@@ -1,0 +1,9 @@
+tolerance 2.0
+filetype pdb
+output multi_ethanol.pdb
+
+# Ethanol (10 molecules)
+structure ethanol.pdb
+  number 10
+  inside box 0.0 0.0 0.0 15.0 15.0 15.0
+end structure

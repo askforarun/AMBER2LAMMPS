@@ -1,0 +1,5 @@
+source leaprc.gaff2
+SUS = loadmol2 benzene.mol2
+check SUS
+saveamberparm SUS benzene.prmtop benzene.crd
+quit

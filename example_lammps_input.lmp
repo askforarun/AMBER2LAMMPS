@@ -29,5 +29,3 @@ thermo_style custom ebond eangle edihed eimp epair evdwl ecoul elong etail pe
 # --------------------- Energy Test ---------------------
 # Run 0 steps to check energy and system setup
 run 0
-
-

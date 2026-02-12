@@ -1,0 +1,5 @@
+source leaprc.gaff2
+SUS = loadmol2 aspirin_fixed.mol2
+check SUS
+saveamberparm SUS aspirin.prmtop aspirin.crd
+quit

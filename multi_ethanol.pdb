@@ -1,0 +1,30 @@
+COMPND    MULTI_ETHANOL_SYSTEM
+AUTHOR    GENERATED FOR TESTING
+HETATM    1  C   ETH     1       0.000   0.000   0.000  1.00  0.00           C  
+HETATM    2  C   ETH     1       1.529   0.000   0.000  1.00  0.00           C  
+HETATM    3  O   ETH     1      -0.558   1.429   0.000  1.00  0.00           O  
+HETATM    4  O   ETH     1       2.087   1.429   0.000  1.00  0.00           O  
+HETATM    5  H   ETH     1      -0.558  -0.545   0.889  1.00  0.00           H  
+HETATM    6  H   ETH     1      -0.558  -0.545  -0.889  1.00  0.00           H  
+HETATM    7  H   ETH     1       2.645   0.000   0.889  1.00  0.00           H  
+HETATM    8  H   ETH     1       2.645   0.000  -0.889  1.00  0.00           H  
+HETATM    9  H   ETH     1       2.087   2.469   0.000  1.00  0.00           H  
+HETATM   10  C   ETH     2       5.000   0.000   0.000  1.00  0.00           C  
+HETATM   11  C   ETH     2       6.529   0.000   0.000  1.00  0.00           C  
+HETATM   12  O   ETH     2       4.442   1.429   0.000  1.00  0.00           O  
+HETATM   13  O   ETH     2       7.087   1.429   0.000  1.00  0.00           O  
+HETATM   14  H   ETH     2       4.442  -0.545   0.889  1.00  0.00           H  
+HETATM   15  H   ETH     2       4.442  -0.545  -0.889  1.00  0.00           H  
+HETATM   16  H   ETH     2       7.645   0.000   0.889  1.00  0.00           H  
+HETATM   17  H   ETH     2       7.645   0.000  -0.889  1.00  0.00           H  
+HETATM   18  H   ETH     2       7.087   2.469   0.000  1.00  0.00           H  
+HETATM   19  C   ETH     3       0.000   5.000   0.000  1.00  0.00           C  
+HETATM   20  C   ETH     3       1.529   5.000   0.000  1.00  0.00           C  
+HETATM   21  O   ETH     3      -0.558   6.429   0.000  1.00  0.00           O  
+HETATM   22  O   ETH     3       2.087   6.429   0.000  1.00  0.00           O  
+HETATM   23  H   ETH     3      -0.558   4.455   0.889  1.00  0.00           H  
+HETATM   24  H   ETH     3      -0.558   4.455  -0.889  1.00  0.00           H  
+HETATM   25  H   ETH     3       2.645   5.000   0.889  1.00  0.00           H  
+HETATM   26  H   ETH     3       2.645   5.000  -0.889  1.00  0.00           H  
+HETATM   27  H   ETH     3       2.087   7.469   0.000  1.00  0.00           H  
+END

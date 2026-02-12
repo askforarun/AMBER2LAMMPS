@@ -1,0 +1,5 @@
+source leaprc.gaff2
+SUS = loadmol2 ethanol.mol2
+check SUS
+saveamberparm SUS ethanol.prmtop ethanol.crd
+quit
