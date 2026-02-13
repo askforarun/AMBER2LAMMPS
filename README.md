@@ -43,7 +43,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
     - [Additional CLI examples](#additional-cli-examples)
   - [Python API with LAMMPS execution](#python-api-with-lammps-execution)
     - [Additional API examples](#additional-api-examples)
-  - [Mixed Molecular System Workflow](#mixed-molecular-system-workflow)
+  - [Multiple Copies and Mixed Molecular System Workflow](#multiple-copies-and-mixed-molecular-system-workflow)
 - [Validation with InterMol](#validation-with-intermol)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -359,7 +359,9 @@ for mol in molecules:
 
 For systems containing multiple molecule types (e.g., drug + solvent mixtures), use the following workflow.
 
-### 1. Prepare Individual Molecules
+### Mixed Molecular System (Multiple Topologies)
+
+#### 1. Prepare Individual Molecules
 ```bash
 # Generate MOL2 files with proper bond orders (Open Babel + Antechamber)
 obabel aspirin.pdb -opdb -O aspirin_obabel.pdb -h --gen3d
@@ -376,7 +378,7 @@ obabel ethanol_obabel.pdb -omol2 -O ethanol_obabel.mol2 -h
 antechamber -fi mol2 -fo mol2 -i ethanol_obabel.mol2 -o ethanol_final.mol2 -c bcc
 ```
 
-### 2. Generate AMBER Topologies
+#### 2. Generate AMBER Topologies
 ```bash
 # Create tleap input files and run for each molecule
 tleap -f tleap_aspirin.in
@@ -384,7 +386,7 @@ tleap -f tleap_benzene.in
 tleap -f tleap_ethanol.in
 ```
 
-### 3. Build Mixed System with PackMol
+#### 3. Build Mixed System with PackMol
 
 ```bash
 # Create PackMol input file
@@ -419,47 +421,41 @@ packmol < packmol_mix.in
 # in the same order and counts you will pass to -t/-c. Keep residue/atom ordering intact.
 ```
 
-### 4. Convert to LAMMPS
+#### 4. Convert to LAMMPS
 
-#### Mixed Molecular System (Multiple Topologies)
 ```bash
-# PDB must be a single combined file (e.g., PackMol output) with all molecules in the same
-# order and counts you pass to -t/-c.
-
-# Create PackMol input file (packmol_mix.in)
-cat > packmol_mix.in << 'EOF'
-tolerance 2.0
-filetype pdb
-output mixed_system.pdb
-
-# Aspirin (1 molecule)
-structure aspirin.pdb
-  number 1
-  inside box 0.0 0.0 0.0 10.0 10.0 10.0
-end structure
-
-# Benzene (2 molecules)
-structure benzene.pdb
-  number 2
-  inside box 0.0 0.0 0.0 10.0 10.0 10.0
-end structure
-
-# Ethanol (5 molecules)
-structure ethanol.pdb
-  number 5
-  inside box 0.0 0.0 0.0 10.0 10.0 10.0
-end structure
-EOF
-
-# Run PackMol to create the combined PDB file
-packmol < packmol_mix.in
-
-# Convert to LAMMPS
+# Convert the mixed molecular system to LAMMPS format
 python amber_to_lammps.py mixed_data.lammps mixed_parm.lammps mixed_system.pdb \
   -t aspirin.prmtop benzene.prmtop ethanol.prmtop -c 1 2 5 --charges 0 0 0 --verbose
 ```
 
-#### Multiple Copies (Single Topology)
+#### Python API
+
+```python
+from amber_to_lammps import amber2lammps, validate_files
+import subprocess
+
+# Validate all topology files
+validate_files(['aspirin.prmtop', 'benzene.prmtop', 'ethanol.prmtop'], [1, 2, 5], 'mixed_system.pdb')
+
+# Convert mixed system with multiple molecule types
+amber2lammps(
+    data_file='mixed_data.lammps',
+    param_file='mixed_parm.lammps', 
+    topologies=['aspirin.prmtop', 'benzene.prmtop', 'ethanol.prmtop'],
+    molecule_counts=[1, 2, 5],  # 1 aspirin, 2 benzene, 5 ethanol
+    pdb_file='mixed_system.pdb',
+    charges_target=[0, 0, 0],  # All neutral molecules
+    verbose=True,
+    keep_temp=False
+)
+
+# Run LAMMPS with mixed system
+subprocess.run("lmp < test_mixed_system.in", shell=True)
+```
+
+### Multiple Copies (Single Topology)
+
 ```bash
 # Multiple copies of the same molecule (e.g., 10 ethanol molecules)
 
@@ -484,33 +480,8 @@ python amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps mu
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
 
-#### Python API Examples
+#### Python API 
 
-**Mixed Molecular System (Multiple Topologies)**
-```python
-from amber_to_lammps import amber2lammps, validate_files
-import subprocess
-
-# Validate all topology files
-validate_files(['aspirin.prmtop', 'benzene.prmtop', 'ethanol.prmtop'], [1, 2, 5], 'mixed_system.pdb')
-
-# Convert mixed system with multiple molecule types
-amber2lammps(
-    data_file='mixed_data.lammps',
-    param_file='mixed_parm.lammps', 
-    topologies=['aspirin.prmtop', 'benzene.prmtop', 'ethanol.prmtop'],
-    molecule_counts=[1, 2, 5],  # 1 aspirin, 2 benzene, 5 ethanol
-    pdb_file='mixed_system.pdb',
-    charges_target=[0, 0, 0],  # All neutral molecules
-    verbose=True,
-    keep_temp=False
-)
-
-# Run LAMMPS with mixed system
-subprocess.run("lmp < test_mixed_system.in", shell=True)
-```
-
-**Multiple Copies (Single Topology)**
 ```python
 from amber_to_lammps import amber2lammps, validate_files
 
