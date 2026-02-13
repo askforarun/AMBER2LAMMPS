@@ -501,9 +501,9 @@ amber2lammps(
 )
 ```
 
-```bash
+```python
 # Use appropriate LAMMPS input for mixed systems
-lmp < test_mixed_system.in
+subprocess.run("lmp < test_mixed_system.in", shell=True)
 ```
 
 ## Validation with InterMol
