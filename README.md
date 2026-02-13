@@ -501,14 +501,10 @@ amber2lammps(
 )
 ```
 
-### 5. Run LAMMPS Simulation
 ```bash
 # Use appropriate LAMMPS input for mixed systems
 lmp < test_mixed_system.in
 ```
-
-**Result**: 90-atom mixed system (1 aspirin + 2 benzene + 5 ethanol) ready for MD simulation.
-
 
 ## Validation with InterMol
 
