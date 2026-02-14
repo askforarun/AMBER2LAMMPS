@@ -1,0 +1,413 @@
+# Force field parameters generated from AMBER topologies
+
+
+# Topology 1: aspirin.prmtop
+# Nonbonded
+pair_coeff 1 1 0.1078 3.397709531243626 # c3
+pair_coeff 4 4 0.0208 2.600176998764394 # hc
+pair_coeff 5 5 0.0047 0.5379246460131368 # ho
+pair_coeff 3 3 0.093 3.242871334030835 # oh
+pair_coeff 2 2 0.0726 3.156097798883966 # os
+# Bonds
+bond_coeff 1 228.8900 1.5354
+bond_coeff 2 282.2700 1.4273
+bond_coeff 3 282.2700 1.4273
+bond_coeff 4 282.2700 1.4273
+bond_coeff 5 228.8900 1.5354
+bond_coeff 6 228.8900 1.5354
+bond_coeff 7 228.8900 1.5354
+bond_coeff 8 228.8900 1.5354
+bond_coeff 9 228.8900 1.5354
+bond_coeff 10 228.8900 1.5354
+bond_coeff 11 228.8900 1.5354
+bond_coeff 12 282.2700 1.4273
+bond_coeff 13 285.1500 1.4242
+bond_coeff 14 345.2500 1.0962
+bond_coeff 15 345.2500 1.0962
+bond_coeff 16 345.2500 1.0962
+bond_coeff 17 345.2500 1.0962
+bond_coeff 18 345.2500 1.0962
+bond_coeff 19 345.2500 1.0962
+bond_coeff 20 345.2500 1.0962
+bond_coeff 21 535.5100 0.9725
+# Angles
+angle_coeff 1 77.4400 107.6200
+angle_coeff 2 77.4400 107.6200
+angle_coeff 3 88.3300 113.6000
+angle_coeff 4 98.4400 107.8900
+angle_coeff 5 77.4400 107.6200
+angle_coeff 6 77.4400 107.6200
+angle_coeff 7 59.8700 112.6300
+angle_coeff 8 59.8700 112.6300
+angle_coeff 9 59.8700 112.6300
+angle_coeff 10 59.8700 112.6300
+angle_coeff 11 59.8700 112.6300
+angle_coeff 12 59.8700 112.6300
+angle_coeff 13 59.8700 112.6300
+angle_coeff 14 59.8700 112.6300
+angle_coeff 15 77.4400 107.6200
+angle_coeff 16 76.7900 109.6600
+angle_coeff 17 97.1100 111.1100
+angle_coeff 18 43.2700 109.6800
+angle_coeff 19 43.2700 109.6800
+angle_coeff 20 43.2700 109.6800
+angle_coeff 21 43.2700 109.6800
+angle_coeff 22 43.2700 109.6800
+angle_coeff 23 43.2700 109.6800
+angle_coeff 24 43.2700 109.6800
+angle_coeff 25 43.2700 109.6800
+angle_coeff 26 43.2700 109.6800
+angle_coeff 27 43.2700 109.6800
+angle_coeff 28 43.2700 109.6800
+angle_coeff 29 65.1300 107.3900
+angle_coeff 30 35.8000 107.7300
+angle_coeff 31 35.8000 107.7300
+angle_coeff 32 35.8000 107.7300
+# Dihedrals
+dihedral_coeff 1 1 0.8800 1 180.0001
+dihedral_coeff 2 1 0.0800 2 0.0000
+dihedral_coeff 3 1 0.7500 3 0.0000
+dihedral_coeff 4 1 0.8800 1 180.0001
+dihedral_coeff 5 1 0.0800 2 0.0000
+dihedral_coeff 6 1 0.7500 3 0.0000
+dihedral_coeff 7 1 0.8800 1 180.0001
+dihedral_coeff 8 1 0.0800 2 0.0000
+dihedral_coeff 9 1 0.7500 3 0.0000
+dihedral_coeff 10 1 0.4600 1 180.0001
+dihedral_coeff 11 1 0.8500 2 0.0000
+dihedral_coeff 12 1 0.8500 3 0.0000
+dihedral_coeff 13 1 0.1556 3 0.0000
+dihedral_coeff 14 1 0.1556 3 0.0000
+dihedral_coeff 15 1 0.1556 3 0.0000
+dihedral_coeff 16 1 0.5200 3 0.0000
+dihedral_coeff 17 1 0.5200 3 0.0000
+dihedral_coeff 18 1 0.1556 3 0.0000
+dihedral_coeff 19 1 0.1800 3 0.0000
+dihedral_coeff 20 1 0.5200 3 0.0000
+dihedral_coeff 21 1 0.5200 3 0.0000
+dihedral_coeff 22 1 0.5200 3 0.0000
+dihedral_coeff 23 1 0.5200 3 0.0000
+dihedral_coeff 24 1 0.5200 3 0.0000
+dihedral_coeff 25 1 0.5200 3 0.0000
+dihedral_coeff 26 1 0.1556 3 0.0000
+dihedral_coeff 27 1 0.1800 3 0.0000
+dihedral_coeff 28 1 0.2500 1 0.0000
+dihedral_coeff 29 1 0.0000 3 0.0000
+dihedral_coeff 30 1 0.2500 1 0.0000
+dihedral_coeff 31 1 0.0000 3 0.0000
+dihedral_coeff 32 1 0.2500 1 0.0000
+dihedral_coeff 33 1 0.0000 3 0.0000
+dihedral_coeff 34 1 0.2500 1 0.0000
+dihedral_coeff 35 1 0.0000 3 0.0000
+dihedral_coeff 36 1 0.2500 1 0.0000
+dihedral_coeff 37 1 0.0000 3 0.0000
+dihedral_coeff 38 1 0.2500 1 0.0000
+dihedral_coeff 39 1 0.0000 3 0.0000
+dihedral_coeff 40 1 0.2500 1 0.0000
+dihedral_coeff 41 1 0.0000 3 0.0000
+dihedral_coeff 42 1 0.1300 3 0.0000
+dihedral_coeff 43 1 0.1300 3 0.0000
+dihedral_coeff 44 1 0.1300 3 0.0000
+dihedral_coeff 45 1 0.1300 3 0.0000
+dihedral_coeff 46 1 0.1300 3 0.0000
+dihedral_coeff 47 1 0.1300 3 0.0000
+dihedral_coeff 48 1 0.1300 3 0.0000
+dihedral_coeff 49 1 0.1300 3 0.0000
+dihedral_coeff 50 1 0.0600 3 0.0000
+dihedral_coeff 51 1 0.1300 3 0.0000
+dihedral_coeff 52 1 0.1667 3 0.0000
+dihedral_coeff 53 1 0.1200 3 0.0000
+dihedral_coeff 54 1 0.1200 3 0.0000
+dihedral_coeff 55 1 0.1200 3 0.0000
+
+# Topology 2: benzene.prmtop
+# Nonbonded
+# pair_coeff for c3 already defined above
+# pair_coeff for hc already defined above
+# Bonds
+bond_coeff 22 228.8900 1.5354
+bond_coeff 23 228.8900 1.5354
+bond_coeff 24 228.8900 1.5354
+bond_coeff 25 228.8900 1.5354
+bond_coeff 26 228.8900 1.5354
+bond_coeff 27 228.8900 1.5354
+bond_coeff 28 345.2500 1.0962
+bond_coeff 29 345.2500 1.0962
+bond_coeff 30 345.2500 1.0962
+bond_coeff 31 345.2500 1.0962
+bond_coeff 32 345.2500 1.0962
+bond_coeff 33 345.2500 1.0962
+bond_coeff 34 228.8900 1.5354
+bond_coeff 35 228.8900 1.5354
+bond_coeff 36 228.8900 1.5354
+bond_coeff 37 228.8900 1.5354
+bond_coeff 38 228.8900 1.5354
+bond_coeff 39 228.8900 1.5354
+bond_coeff 40 345.2500 1.0962
+bond_coeff 41 345.2500 1.0962
+bond_coeff 42 345.2500 1.0962
+bond_coeff 43 345.2500 1.0962
+bond_coeff 44 345.2500 1.0962
+bond_coeff 45 345.2500 1.0962
+# Angles
+angle_coeff 33 59.8700 112.6300
+angle_coeff 34 59.8700 112.6300
+angle_coeff 35 59.8700 112.6300
+angle_coeff 36 59.8700 112.6300
+angle_coeff 37 59.8700 112.6300
+angle_coeff 38 59.8700 112.6300
+angle_coeff 39 43.2700 109.6800
+angle_coeff 40 43.2700 109.6800
+angle_coeff 41 43.2700 109.6800
+angle_coeff 42 43.2700 109.6800
+angle_coeff 43 43.2700 109.6800
+angle_coeff 44 43.2700 109.6800
+angle_coeff 45 43.2700 109.6800
+angle_coeff 46 43.2700 109.6800
+angle_coeff 47 43.2700 109.6800
+angle_coeff 48 43.2700 109.6800
+angle_coeff 49 43.2700 109.6800
+angle_coeff 50 43.2700 109.6800
+angle_coeff 51 59.8700 112.6300
+angle_coeff 52 59.8700 112.6300
+angle_coeff 53 59.8700 112.6300
+angle_coeff 54 59.8700 112.6300
+angle_coeff 55 59.8700 112.6300
+angle_coeff 56 59.8700 112.6300
+angle_coeff 57 43.2700 109.6800
+angle_coeff 58 43.2700 109.6800
+angle_coeff 59 43.2700 109.6800
+angle_coeff 60 43.2700 109.6800
+angle_coeff 61 43.2700 109.6800
+angle_coeff 62 43.2700 109.6800
+angle_coeff 63 43.2700 109.6800
+angle_coeff 64 43.2700 109.6800
+angle_coeff 65 43.2700 109.6800
+angle_coeff 66 43.2700 109.6800
+angle_coeff 67 43.2700 109.6800
+angle_coeff 68 43.2700 109.6800
+# Dihedrals
+dihedral_coeff 56 1 0.5200 3 0.0000
+dihedral_coeff 57 1 0.5200 3 0.0000
+dihedral_coeff 58 1 0.5200 3 0.0000
+dihedral_coeff 59 1 0.5200 3 0.0000
+dihedral_coeff 60 1 0.5200 3 0.0000
+dihedral_coeff 61 1 0.5200 3 0.0000
+dihedral_coeff 62 1 0.1300 3 0.0000
+dihedral_coeff 63 1 0.1300 3 0.0000
+dihedral_coeff 64 1 0.1300 3 0.0000
+dihedral_coeff 65 1 0.1300 3 0.0000
+dihedral_coeff 66 1 0.1300 3 0.0000
+dihedral_coeff 67 1 0.1300 3 0.0000
+dihedral_coeff 68 1 0.1300 3 0.0000
+dihedral_coeff 69 1 0.1300 3 0.0000
+dihedral_coeff 70 1 0.1300 3 0.0000
+dihedral_coeff 71 1 0.1300 3 0.0000
+dihedral_coeff 72 1 0.1300 3 0.0000
+dihedral_coeff 73 1 0.1300 3 0.0000
+dihedral_coeff 74 1 0.1200 3 0.0000
+dihedral_coeff 75 1 0.1200 3 0.0000
+dihedral_coeff 76 1 0.1200 3 0.0000
+dihedral_coeff 77 1 0.1200 3 0.0000
+dihedral_coeff 78 1 0.1200 3 0.0000
+dihedral_coeff 79 1 0.1200 3 0.0000
+dihedral_coeff 80 1 0.5200 3 0.0000
+dihedral_coeff 81 1 0.5200 3 0.0000
+dihedral_coeff 82 1 0.5200 3 0.0000
+dihedral_coeff 83 1 0.5200 3 0.0000
+dihedral_coeff 84 1 0.5200 3 0.0000
+dihedral_coeff 85 1 0.5200 3 0.0000
+dihedral_coeff 86 1 0.1300 3 0.0000
+dihedral_coeff 87 1 0.1300 3 0.0000
+dihedral_coeff 88 1 0.1300 3 0.0000
+dihedral_coeff 89 1 0.1300 3 0.0000
+dihedral_coeff 90 1 0.1300 3 0.0000
+dihedral_coeff 91 1 0.1300 3 0.0000
+dihedral_coeff 92 1 0.1300 3 0.0000
+dihedral_coeff 93 1 0.1300 3 0.0000
+dihedral_coeff 94 1 0.1300 3 0.0000
+dihedral_coeff 95 1 0.1300 3 0.0000
+dihedral_coeff 96 1 0.1300 3 0.0000
+dihedral_coeff 97 1 0.1300 3 0.0000
+dihedral_coeff 98 1 0.1200 3 0.0000
+dihedral_coeff 99 1 0.1200 3 0.0000
+dihedral_coeff 100 1 0.1200 3 0.0000
+dihedral_coeff 101 1 0.1200 3 0.0000
+dihedral_coeff 102 1 0.1200 3 0.0000
+dihedral_coeff 103 1 0.1200 3 0.0000
+
+# Topology 3: ethanol.prmtop
+# Nonbonded
+# pair_coeff for c3 already defined above
+pair_coeff 6 6 0.0208 2.4219972551363265 # h1
+# pair_coeff for hc already defined above
+# pair_coeff for ho already defined above
+# pair_coeff for oh already defined above
+# Bonds
+bond_coeff 46 228.8900 1.5354
+bond_coeff 47 285.1500 1.4242
+bond_coeff 48 345.2500 1.0962
+bond_coeff 49 345.2500 1.0962
+bond_coeff 50 345.2500 1.0962
+bond_coeff 51 344.2200 1.0969
+bond_coeff 52 344.2200 1.0969
+bond_coeff 53 535.5100 0.9725
+bond_coeff 54 228.8900 1.5354
+bond_coeff 55 285.1500 1.4242
+bond_coeff 56 345.2500 1.0962
+bond_coeff 57 345.2500 1.0962
+bond_coeff 58 345.2500 1.0962
+bond_coeff 59 344.2200 1.0969
+bond_coeff 60 344.2200 1.0969
+bond_coeff 61 535.5100 0.9725
+bond_coeff 62 228.8900 1.5354
+bond_coeff 63 285.1500 1.4242
+bond_coeff 64 345.2500 1.0962
+bond_coeff 65 345.2500 1.0962
+bond_coeff 66 345.2500 1.0962
+bond_coeff 67 344.2200 1.0969
+bond_coeff 68 344.2200 1.0969
+bond_coeff 69 535.5100 0.9725
+bond_coeff 70 228.8900 1.5354
+bond_coeff 71 285.1500 1.4242
+bond_coeff 72 345.2500 1.0962
+bond_coeff 73 345.2500 1.0962
+bond_coeff 74 345.2500 1.0962
+bond_coeff 75 344.2200 1.0969
+bond_coeff 76 344.2200 1.0969
+bond_coeff 77 535.5100 0.9725
+bond_coeff 78 228.8900 1.5354
+bond_coeff 79 285.1500 1.4242
+bond_coeff 80 345.2500 1.0962
+bond_coeff 81 345.2500 1.0962
+bond_coeff 82 345.2500 1.0962
+bond_coeff 83 344.2200 1.0969
+bond_coeff 84 344.2200 1.0969
+bond_coeff 85 535.5100 0.9725
+# Angles
+angle_coeff 69 76.7900 109.6600
+angle_coeff 70 43.2800 109.5900
+angle_coeff 71 43.2800 109.5900
+angle_coeff 72 43.2700 109.6800
+angle_coeff 73 43.2700 109.6800
+angle_coeff 74 43.2700 109.6800
+angle_coeff 75 65.1300 107.3900
+angle_coeff 76 56.2900 110.3800
+angle_coeff 77 56.2900 110.3800
+angle_coeff 78 35.8000 107.7300
+angle_coeff 79 35.8000 107.7300
+angle_coeff 80 35.8000 107.7300
+angle_coeff 81 35.6400 108.5500
+angle_coeff 82 76.7900 109.6600
+angle_coeff 83 43.2800 109.5900
+angle_coeff 84 43.2800 109.5900
+angle_coeff 85 43.2700 109.6800
+angle_coeff 86 43.2700 109.6800
+angle_coeff 87 43.2700 109.6800
+angle_coeff 88 65.1300 107.3900
+angle_coeff 89 56.2900 110.3800
+angle_coeff 90 56.2900 110.3800
+angle_coeff 91 35.8000 107.7300
+angle_coeff 92 35.8000 107.7300
+angle_coeff 93 35.8000 107.7300
+angle_coeff 94 35.6400 108.5500
+angle_coeff 95 76.7900 109.6600
+angle_coeff 96 43.2800 109.5900
+angle_coeff 97 43.2800 109.5900
+angle_coeff 98 43.2700 109.6800
+angle_coeff 99 43.2700 109.6800
+angle_coeff 100 43.2700 109.6800
+angle_coeff 101 65.1300 107.3900
+angle_coeff 102 56.2900 110.3800
+angle_coeff 103 56.2900 110.3800
+angle_coeff 104 35.8000 107.7300
+angle_coeff 105 35.8000 107.7300
+angle_coeff 106 35.8000 107.7300
+angle_coeff 107 35.6400 108.5500
+angle_coeff 108 76.7900 109.6600
+angle_coeff 109 43.2800 109.5900
+angle_coeff 110 43.2800 109.5900
+angle_coeff 111 43.2700 109.6800
+angle_coeff 112 43.2700 109.6800
+angle_coeff 113 43.2700 109.6800
+angle_coeff 114 65.1300 107.3900
+angle_coeff 115 56.2900 110.3800
+angle_coeff 116 56.2900 110.3800
+angle_coeff 117 35.8000 107.7300
+angle_coeff 118 35.8000 107.7300
+angle_coeff 119 35.8000 107.7300
+angle_coeff 120 35.6400 108.5500
+angle_coeff 121 76.7900 109.6600
+angle_coeff 122 43.2800 109.5900
+angle_coeff 123 43.2800 109.5900
+angle_coeff 124 43.2700 109.6800
+angle_coeff 125 43.2700 109.6800
+angle_coeff 126 43.2700 109.6800
+angle_coeff 127 65.1300 107.3900
+angle_coeff 128 56.2900 110.3800
+angle_coeff 129 56.2900 110.3800
+angle_coeff 130 35.8000 107.7300
+angle_coeff 131 35.8000 107.7300
+angle_coeff 132 35.8000 107.7300
+angle_coeff 133 35.6400 108.5500
+# Dihedrals
+dihedral_coeff 104 1 0.0600 3 0.0000
+dihedral_coeff 105 1 0.0900 3 0.0000
+dihedral_coeff 106 1 0.0900 3 0.0000
+dihedral_coeff 107 1 0.0900 3 0.0000
+dihedral_coeff 108 1 0.1556 3 0.0000
+dihedral_coeff 109 1 0.1556 3 0.0000
+dihedral_coeff 110 1 0.1556 3 0.0000
+dihedral_coeff 111 1 0.1556 3 0.0000
+dihedral_coeff 112 1 0.1556 3 0.0000
+dihedral_coeff 113 1 0.1556 3 0.0000
+dihedral_coeff 114 1 0.1230 3 0.0000
+dihedral_coeff 115 1 0.1230 3 0.0000
+dihedral_coeff 116 1 0.0600 3 0.0000
+dihedral_coeff 117 1 0.0900 3 0.0000
+dihedral_coeff 118 1 0.0900 3 0.0000
+dihedral_coeff 119 1 0.0900 3 0.0000
+dihedral_coeff 120 1 0.1556 3 0.0000
+dihedral_coeff 121 1 0.1556 3 0.0000
+dihedral_coeff 122 1 0.1556 3 0.0000
+dihedral_coeff 123 1 0.1556 3 0.0000
+dihedral_coeff 124 1 0.1556 3 0.0000
+dihedral_coeff 125 1 0.1556 3 0.0000
+dihedral_coeff 126 1 0.1230 3 0.0000
+dihedral_coeff 127 1 0.1230 3 0.0000
+dihedral_coeff 128 1 0.0600 3 0.0000
+dihedral_coeff 129 1 0.0900 3 0.0000
+dihedral_coeff 130 1 0.0900 3 0.0000
+dihedral_coeff 131 1 0.0900 3 0.0000
+dihedral_coeff 132 1 0.1556 3 0.0000
+dihedral_coeff 133 1 0.1556 3 0.0000
+dihedral_coeff 134 1 0.1556 3 0.0000
+dihedral_coeff 135 1 0.1556 3 0.0000
+dihedral_coeff 136 1 0.1556 3 0.0000
+dihedral_coeff 137 1 0.1556 3 0.0000
+dihedral_coeff 138 1 0.1230 3 0.0000
+dihedral_coeff 139 1 0.1230 3 0.0000
+dihedral_coeff 140 1 0.0600 3 0.0000
+dihedral_coeff 141 1 0.0900 3 0.0000
+dihedral_coeff 142 1 0.0900 3 0.0000
+dihedral_coeff 143 1 0.0900 3 0.0000
+dihedral_coeff 144 1 0.1556 3 0.0000
+dihedral_coeff 145 1 0.1556 3 0.0000
+dihedral_coeff 146 1 0.1556 3 0.0000
+dihedral_coeff 147 1 0.1556 3 0.0000
+dihedral_coeff 148 1 0.1556 3 0.0000
+dihedral_coeff 149 1 0.1556 3 0.0000
+dihedral_coeff 150 1 0.1230 3 0.0000
+dihedral_coeff 151 1 0.1230 3 0.0000
+dihedral_coeff 152 1 0.0600 3 0.0000
+dihedral_coeff 153 1 0.0900 3 0.0000
+dihedral_coeff 154 1 0.0900 3 0.0000
+dihedral_coeff 155 1 0.0900 3 0.0000
+dihedral_coeff 156 1 0.1556 3 0.0000
+dihedral_coeff 157 1 0.1556 3 0.0000
+dihedral_coeff 158 1 0.1556 3 0.0000
+dihedral_coeff 159 1 0.1556 3 0.0000
+dihedral_coeff 160 1 0.1556 3 0.0000
+dihedral_coeff 161 1 0.1556 3 0.0000
+dihedral_coeff 162 1 0.1230 3 0.0000
+dihedral_coeff 163 1 0.1230 3 0.0000

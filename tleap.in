@@ -1,6 +1,5 @@
 source leaprc.gaff2
-SUS = loadmol2 epon.mol2
-check SUS
-loadamberparams epon.frcmod
-saveamberparm SUS epon.prmtop epon.crd
+MOLECULE = loadmol2 epon.mol2
+check MOLECULE
+saveamberparm MOLECULE epon.prmtop epon.crd
 quit
