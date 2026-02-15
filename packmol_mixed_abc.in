@@ -1,0 +1,21 @@
+tolerance 2.0
+filetype pdb
+output mixed_abc.pdb
+
+# Aspirin (1 molecule)
+structure aspirin.pdb
+  number 1
+  inside box 0.0 0.0 0.0 12.0 12.0 12.0
+end structure
+
+# Benzene (1 molecule)
+structure benzene.pdb
+  number 1
+  inside box 0.0 0.0 0.0 12.0 12.0 12.0
+end structure
+
+# Ethanol (1 molecule)
+structure ethanol.pdb
+  number 1
+  inside box 0.0 0.0 0.0 12.0 12.0 12.0
+end structure
