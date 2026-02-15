@@ -1,5 +1,6 @@
 source leaprc.gaff2
-SUS = loadmol2 benzene.mol2
-check SUS
-saveamberparm SUS benzene.prmtop benzene.crd
+source leaprc.water.tip3p
+mol = loadmol2 benzene.mol2
+check mol
+saveamberparm mol benzene.prmtop benzene.pdb
 quit

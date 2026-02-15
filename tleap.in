@@ -1,5 +1,0 @@
-source leaprc.gaff2
-MOLECULE = loadmol2 epon.mol2
-check MOLECULE
-saveamberparm MOLECULE epon.prmtop epon.crd
-quit
