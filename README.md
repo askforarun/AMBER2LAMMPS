@@ -454,9 +454,23 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 
 ### Multiple Copies (Single Topology)
 
+#### 1. Prepare Individual Molecules
 ```bash
-# Multiple copies of the same molecule (e.g., 10 ethanol molecules)
+# Generate MOL2 files with proper bond orders (Open Babel + Antechamber)
+obabel ethanol.pdb -opdb -O ethanol_obabel.pdb -h --gen3d
+obabel ethanol_obabel.pdb -omol2 -O ethanol_obabel.mol2 -h
+antechamber -fi mol2 -fo mol2 -i ethanol_obabel.mol2 -o ethanol_final.mol2 -c bcc
+```
 
+#### 2. Generate AMBER Topologies
+```bash
+# Create tleap input files and run for the molecule
+tleap -f tleap_ethanol.in
+```
+
+#### 3. Build Multi-Copy System with PackMol
+
+```bash
 # Create PackMol input file for multiple copies (packmol_multi_ethanol.in)
 cat > packmol_multi_ethanol.in << 'EOF'
 tolerance 2.0
@@ -470,10 +484,17 @@ structure ethanol.pdb
 end structure
 EOF
 
-# First create a combined PDB with PackMol
+# Run PackMol
 packmol < packmol_multi_ethanol.in
 
-# Convert to LAMMPS
+# The resulting multi_ethanol.pdb is a single combined PDB containing all molecules
+# in the same order and counts you will pass to -t/-c. Keep residue/atom ordering intact.
+```
+
+#### 4. Convert to LAMMPS
+
+```bash
+# Convert the multi-copy molecular system to LAMMPS format
 python amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
