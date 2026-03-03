@@ -1,0 +1,29 @@
+# Generated LAMMPS output files (produced by running amber_to_lammps.py)
+data.lammps
+parm.lammps
+*_data.lammps
+*_parm.lammps
+
+# LAMMPS runtime logs
+log.lammps
+
+# Temporary debug files produced by --keep-temp
+pairs.txt
+bonds.txt
+angles.txt
+dihedrals.txt
+
+# Intermediate AMBER/antechamber files
+*.mol2
+*.frcmod
+tleap.in
+sqm.in
+sqm.out
+sqm.dens
+ANTECHAMBER*
+ATOMTYPE.INF
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
