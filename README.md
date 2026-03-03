@@ -170,7 +170,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 4. **Coordinates and box**: Coordinates come from the combined PDB; the box is min/max of those coordinates expanded by `buffer`.
 5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules.
 6. **Nonbonded coefficients**: Like–like `pair_coeff` lines are emitted per atom type; cross terms are left to LAMMPS mixing rules.
-7. **Bonded coefficients**: Bonds, angles, dihedrals are written from ParmEd data; each instance gets a unique type ID. Multi-term torsions are preserved for `dihedral_style fourier`.
+7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.
 8. **Export and cleanup**: Data/parameter files are written; debug files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) are kept if `--keep-temp` is set.
 
 ### Understanding Charge Schemes and Normalization
