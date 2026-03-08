@@ -6,7 +6,7 @@ boundary p p p
 
 bond_style hybrid harmonic
 angle_style hybrid harmonic
-dihedral_style hybrid charmm multi/harmonic
+dihedral_style hybrid multi/harmonic charmm
 special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.83333333
 
 read_data epon_converted.lmp

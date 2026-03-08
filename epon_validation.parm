@@ -1,0 +1,56 @@
+# Force field parameters generated from AMBER topologies
+
+
+# Topology 1: epon.prmtop
+# Nonbonded
+pair_coeff 1 1 0.1094 3.3996695084235347 # c3
+pair_coeff 3 3 0.086 3.3996695084235347 # ca
+pair_coeff 6 6 0.0157 2.471353044121301 # h1
+pair_coeff 4 4 0.015 2.59964245953351 # ha
+pair_coeff 2 2 0.0157 2.649532787749369 # hc
+pair_coeff 8 8 0.0 0.0 # ho
+pair_coeff 7 7 0.2104 3.0664733878390478 # oh
+pair_coeff 5 5 0.17 3.0000123434657784 # os
+
+# Bond Coefficients (deduplicated across all topologies and copies)
+bond_coeff 1 300.9000 1.5380  # c3-c3
+bond_coeff 2 321.0000 1.5160  # c3-ca
+bond_coeff 3 461.1000 1.3980  # ca-ca
+bond_coeff 4 376.6000 1.3700  # ca-os
+bond_coeff 5 308.6000 1.4320  # os-c3
+bond_coeff 6 316.7000 1.4230  # c3-oh
+bond_coeff 7 330.6000 1.0970  # c3-hc
+bond_coeff 8 345.8000 1.0860  # ca-ha
+bond_coeff 9 371.4000 0.9730  # oh-ho
+
+# Angle Coefficients (deduplicated across all topologies and copies)
+angle_coeff 1 63.5000 120.7701  # c3-ca-ca
+angle_coeff 2 63.1000 112.0700  # c3-c3-ca
+angle_coeff 3 62.9000 111.5100  # c3-c3-c3
+angle_coeff 4 63.6000 112.2400  # ca-c3-ca
+angle_coeff 5 66.6000 120.0201  # ca-ca-ca
+angle_coeff 6 69.6000 119.2001  # ca-ca-os
+angle_coeff 7 62.5000 117.9601  # ca-os-c3
+angle_coeff 8 68.0000 107.9700  # os-c3-c3
+angle_coeff 9 67.5000 110.1900  # c3-c3-oh
+angle_coeff 10 46.3000 109.8000  # c3-c3-hc
+angle_coeff 11 39.4000 107.5800  # hc-c3-hc
+angle_coeff 12 48.2000 119.8801  # ca-ca-ha
+angle_coeff 13 50.8000 109.7800  # os-c3-h1
+angle_coeff 14 46.4000 109.5600  # c3-c3-h1
+angle_coeff 15 39.2000 108.4600  # h1-c3-h1
+angle_coeff 16 47.4000 107.2600  # c3-oh-ho
+angle_coeff 17 50.9000 110.2600  # h1-c3-oh
+
+# Dihedral Coefficients (deduplicated across all topologies and copies)
+dihedral_coeff 1 1 3.6250 2 180.0001  # c3-ca-ca-ca
+dihedral_coeff 2 1 0.0000 2 0.0000  # c3-c3-ca-ca
+dihedral_coeff 3 1 0.9000 2 180.0001  # ca-ca-os-c3
+dihedral_coeff 4 1 0.3833 3 0.0000  # ca-os-c3-c3
+dihedral_coeff 5 2 0.1440 3 0.0000 1.1750 2 0.0000  # os-c3-c3-oh
+dihedral_coeff 6 1 0.1556 3 0.0000  # os-c3-c3-c3
+dihedral_coeff 7 1 1.1000 2 180.0001  # c3-ca-ca-ca
+dihedral_coeff 8 1 0.1600 3 0.0000  # c3-c3-c3-hc
+dihedral_coeff 9 2 0.0000 3 0.0000 0.2500 1 0.0000  # os-c3-c3-h1
+dihedral_coeff 10 2 0.1600 3 0.0000 0.2500 1 0.0000  # c3-c3-oh-ho
+dihedral_coeff 11 1 0.1667 3 0.0000  # h1-c3-oh-ho

@@ -533,35 +533,38 @@ Install InterMol: https://github.com/shirtsgroup/InterMol
 
 **Usage (InterMol):**
 ```bash
-python convert.py --amb_in epon.prmtop epon.crd --lammps
+python convert.py --amb_in epon.prmtop epon.crd --lammps --odir . --oname epon_converted
 ```
 InterMol expects an AMBER coordinate file (`.crd`); `amber_to_lammps.py` uses the PDB for coordinates.
 
-**Generated Files:**
-- `epon_converted.input` (LAMMPS input file)
-- `epon_converted.lmp` (LAMMPS data file)
+**Committed validation assets:**
+- `epon_converted.input` / `epon_converted.lmp` (InterMol reference)
+- `epon_validation.input` / `epon_validation.data` / `epon_validation.parm` (AMBER2LAMMPS validation snapshot)
 
+`epon_validation.data` is an AMBER2LAMMPS-generated snapshot with box bounds aligned to the
+InterMol cell so the comparison isolates force-field conversion rather than box construction.
 
 ```bash
 lmp < epon_converted.input
+lmp < epon_validation.input
 ```
 
 **Energy Comparison Results**
 
-*Output from InterMol and AMBER2LAMMPS (see tutorial Step 3 of CLI with LAMMPS execution)*
+*Output from the committed InterMol and AMBER2LAMMPS validation assets above*
 
 | Energy Component | InterMol | AMBER2LAMMPS | Difference |
 |------------------|----------|---------------|------------|
-| E_bond           | 2.2879665 | 2.2879665     | 0.0000 |
-| E_angle          | 7.0137437 | 7.0137055     | 0.0000382 |
-| E_dihed          | 8.0302669 | 8.0302812     | -0.0000143 |
+| E_bond           | 2.3161274 | 2.3161274     | 0.0000 |
+| E_angle          | 6.0940384 | 6.0940126     | 0.0000258 |
+| E_dihed          | 12.475809 | 12.475827     | -0.0000180 |
 | E_impro          | 0.0000    | 0.0000        | 0.0000 |
-| E_pair           | -11.148889 | -11.320542    | 0.171653 |
-| E_vdwl           | 8.5497495 | 8.3173103     | 0.2324392 |
-| E_coul           | 97.869973 | 107.25122     | -9.381247 |
-| E_long           | -117.56861 | -126.88907    | 9.32046 |
-| E_tail           | -0.0042213943 | -0.23666167  | 0.2324403 |
-| **PotEng**       | **6.1830883** | **6.0114113** | **0.171677** |
+| E_pair           | -8.8739005 | -8.8427535    | -0.0311470 |
+| E_vdwl           | 10.824738 | 10.824738     | 0.0000 |
+| E_coul           | 97.869973 | 97.927222     | -0.0572490 |
+| E_long           | -117.56861 | -117.59471    | 0.02610 |
+| E_tail           | -0.0044166818 | -0.0044166819 | 0.0000000001 |
+| **PotEng**       | **12.012074** | **12.043214** | **-0.03114** |
 
 
 ## Contributing
