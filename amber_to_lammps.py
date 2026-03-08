@@ -21,6 +21,7 @@ Arguments:
 import argparse
 import os
 import sys
+from dataclasses import dataclass
 import parmed as pmd
 import numpy as np
 
@@ -153,13 +154,60 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
     
     return atoms, x, y, z
 
-def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target, buffer=3.8, verbose=False, keep_temp=False):
-    AmberParm=pmd.amber.AmberParm
-    printDetails = pmd.tools.actions.printDetails
+@dataclass
+class TopologyContext:
+    all_parms: list
+    atom_type_mapping: dict
+    mass_list: list
+    nonbonded_params: dict
+    total_atoms_per_topology: list
+    atom_types_per_topology: list
+    type_remaps: list
+    type_origins: dict
 
-    # Auto-detect multi-molecule scenarios
+
+@dataclass
+class BoxBounds:
+    xlo: float
+    xhi: float
+    ylo: float
+    yhi: float
+    zlo: float
+    zhi: float
+
+
+@dataclass
+class MoleculeSpan:
+    mol_id: int
+    topo_idx: int
+    start: int
+    end: int
+    atoms_per_molecule: int
+
+
+@dataclass
+class ConnectivityContext:
+    bond_count: int
+    angle_count: int
+    dihedral_count: int
+    bond_type_count: int
+    angle_type_count: int
+    dihedral_type_count: int
+    bond_lines: list
+    angle_lines: list
+    dihedral_lines: list
+    bond_coeff_lines: list
+    angle_coeff_lines: list
+    dihedral_coeff_lines: list
+    bond_debug: list
+    angle_debug: list
+    dihedral_debug: list
+
+
+def detect_multi_mode(topologies, molecule_counts, pdb_file, verbose):
+    """Detect single vs multi-topology/copy workflows."""
     multi_mode = False
-    
+
     if len(topologies) > 1:
         if verbose:
             print(f"✓ Auto-detected multi-topology system: {len(topologies)} topology files")
@@ -169,229 +217,223 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
             print(f"✓ Auto-detected multi-copy system: {molecule_counts[0]} copies of single topology")
         multi_mode = True
     elif len(topologies) == 1 and molecule_counts[0] == 1:
-        # Check if PDB appears to be a combined file even for single molecule request
         try:
-            with open(pdb_file, 'r') as f:
-                atom_count = 0
-                for line in f:
-                    if line.startswith(('ATOM', 'HETATM')):
-                        atom_count += 1
-            
-            # Load topology to get expected single molecule atom count
+            with open(pdb_file, "r") as f:
+                atom_count = sum(1 for line in f if line.startswith(("ATOM", "HETATM")))
+
             temp_parm = pmd.load_file(topologies[0])
             single_molecule_atoms = len(temp_parm.atoms)
-            
+
             if atom_count > single_molecule_atoms:
                 raise ValueError(
                     f"PDB file '{pdb_file}' contains {atom_count} atoms, but single topology expects {single_molecule_atoms} atoms per molecule. "
                     f"This appears to be a combined PDB file with multiple molecules. "
                     f"Please update your molecule count to {atom_count // single_molecule_atoms} to match the PDB content."
                 )
-                    
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not analyze PDB file for combined detection: {e}")
                 print("         Proceeding with single molecule mode")
-    
+
     if not multi_mode and verbose:
-        print(f"✓ Single molecule mode: 1 topology, 1 copy")
+        print("✓ Single molecule mode: 1 topology, 1 copy")
 
-    # Clean up temporary files if they exist
-    cleanup_temp_files(verbose, keep_temp)
+    return multi_mode
 
-    # Setup output files
-    if verbose:
-        print(f"Converting multiple AMBER topologies to LAMMPS format...")
-        print(f"Output files: {data_file}, {param_file}")
-        for i, (topo, count) in enumerate(zip(topologies, molecule_counts)):
-            print(f"  Topology {i+1}: {topo} ({count} molecules)")
-    
-    # Initialize output files
+
+def initialize_output_files(data_file, param_file, topologies, pdb_file):
     with open(data_file, "w") as f:
-        f.write(f"LAMMPS data file from AMBER conversion\n")
+        f.write("LAMMPS data file from AMBER conversion\n")
         f.write(f"#Source: {', '.join(topologies)}, {pdb_file}\n\n")
 
     with open(param_file, "w") as f:
-        f.write(f"# Force field parameters generated from AMBER topologies\n\n")
+        f.write("# Force field parameters generated from AMBER topologies\n\n")
 
-    # Parse PDB coordinates
-    pdb_atoms, x_coords, y_coords, z_coords = parse_pdb_coordinates(pdb_file, verbose)
-    
-    # Load all topologies and collect atom type information
+
+def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
     all_parms = []
     atom_type_mapping = {}
     mass_list = []
     nonbonded_params = {}
     total_atoms_per_topology = []
     atom_types_per_topology = []
-    type_remaps = []  # per-topology map: original atom type -> canonical unique name
+    type_remaps = []
+    type_origins = {}
     param_tol = 1e-6
-    type_origins = {}  # canonical atom type -> set of topology indices that defined it
-    
+
     for i, topology in enumerate(topologies):
         if verbose:
             print(f"Loading topology {i+1}: {topology}")
-        
-        parm = AmberParm(topology)
+
+        parm = amber_parm_cls(topology)
         all_parms.append(parm)
         total_atoms_per_topology.append(len(parm.atoms))
         atom_types_per_topology.append(set())
         type_remap = {}
         type_remaps.append(type_remap)
-        
+
         if verbose:
             print(f"  Found {len(parm.atoms)} atoms, {len(parm.bonds)} bonds, {len(parm.angles)} angles, {len(parm.dihedrals)} dihedrals")
-        
-        # Extract LJ coefficients and atom information using printDetails
-        lj_details = printDetails(parm, "@1-{}".format(len(parm.atoms)))
-        
-        # Parse atom types and masses
-        for line in str(lj_details).split('\n'):
+
+        lj_details = print_details(parm, "@1-{}".format(len(parm.atoms)))
+
+        for line in str(lj_details).split("\n"):
             line = line.strip()
             if not line or not line[0].isdigit():
                 continue
-                
+
             parts = line.split()
-            if len(parts) >= 10:
-                try:
-                    atom_type = parts[4]
-                    atom_mass = float(parts[8])
-                    lj_radius_amber = float(parts[6])
-                    lj_depth_amber = float(parts[7])
-                    lj_sigma = lj_radius_amber * (1/(2**(1/6))) * 2
+            if len(parts) < 10:
+                continue
 
-                    canonical_name = atom_type
+            try:
+                atom_type = parts[4]
+                atom_mass = float(parts[8])
+                lj_radius_amber = float(parts[6])
+                lj_depth_amber = float(parts[7])
+                lj_sigma = lj_radius_amber * (1 / (2 ** (1 / 6))) * 2
 
-                    if canonical_name in nonbonded_params:
-                        existing = nonbonded_params[canonical_name]
-                        existing_mass = mass_list[atom_type_mapping[canonical_name]-1]
-                        if (abs(existing['lj_epsilon'] - lj_depth_amber) > param_tol or
-                            abs(existing['lj_sigma'] - lj_sigma) > param_tol or
-                            abs(existing_mass - atom_mass) > param_tol):
-                            # Same atom type label but different parameters: namespace per topology
-                            base_name = f"{atom_type}_top{i+1}"
-                            canonical_name = base_name
-                            suffix = 2
-                            while canonical_name in nonbonded_params:
-                                canonical_name = f"{base_name}_{suffix}"
-                                suffix += 1
-                            print(f"Atom type conflict for '{atom_type}' between topologies; renaming to '{canonical_name}' for topology {i+1}")
+                canonical_name = atom_type
 
-                    type_remap[atom_type] = canonical_name
-                    atom_types_per_topology[-1].add(canonical_name)
+                if canonical_name in nonbonded_params:
+                    existing = nonbonded_params[canonical_name]
+                    existing_mass = mass_list[atom_type_mapping[canonical_name] - 1]
+                    if (
+                        abs(existing["lj_epsilon"] - lj_depth_amber) > param_tol
+                        or abs(existing["lj_sigma"] - lj_sigma) > param_tol
+                        or abs(existing_mass - atom_mass) > param_tol
+                    ):
+                        base_name = f"{atom_type}_top{i+1}"
+                        canonical_name = base_name
+                        suffix = 2
+                        while canonical_name in nonbonded_params:
+                            canonical_name = f"{base_name}_{suffix}"
+                            suffix += 1
+                        print(f"Atom type conflict for '{atom_type}' between topologies; renaming to '{canonical_name}' for topology {i+1}")
 
-                    # Add atom type if not already present
-                    type_origins.setdefault(canonical_name, set()).add(i + 1)
+                type_remap[atom_type] = canonical_name
+                atom_types_per_topology[-1].add(canonical_name)
+                type_origins.setdefault(canonical_name, set()).add(i + 1)
 
-                    if canonical_name not in atom_type_mapping:
-                        atom_type_mapping[canonical_name] = len(atom_type_mapping) + 1
-                        mass_list.append(atom_mass)
-                    
-                    # Store LJ parameters if not already stored
-                    if canonical_name not in nonbonded_params:
-                        nonbonded_params[canonical_name] = {
-                            'lj_epsilon': lj_depth_amber,
-                            'lj_sigma': lj_sigma
-                        }
-                        
-                except (ValueError, IndexError) as e:
-                    continue
-    
+                if canonical_name not in atom_type_mapping:
+                    atom_type_mapping[canonical_name] = len(atom_type_mapping) + 1
+                    mass_list.append(atom_mass)
+
+                if canonical_name not in nonbonded_params:
+                    nonbonded_params[canonical_name] = {
+                        "lj_epsilon": lj_depth_amber,
+                        "lj_sigma": lj_sigma,
+                    }
+            except (ValueError, IndexError):
+                continue
+
     if verbose:
         print(f"Found {len(atom_type_mapping)} unique atom types")
-    
-    # Calculate expected total atoms and sanity-check vs PDB
-    contrib = [f"{count}*{atoms_per_topo}={count * atoms_per_topo}"
-               for count, atoms_per_topo in zip(molecule_counts, total_atoms_per_topology)]
+
+    return TopologyContext(
+        all_parms=all_parms,
+        atom_type_mapping=atom_type_mapping,
+        mass_list=mass_list,
+        nonbonded_params=nonbonded_params,
+        total_atoms_per_topology=total_atoms_per_topology,
+        atom_types_per_topology=atom_types_per_topology,
+        type_remaps=type_remaps,
+        type_origins=type_origins,
+    )
+
+
+def validate_pdb_atom_count(pdb_atoms, molecule_counts, total_atoms_per_topology, multi_mode, topologies, pdb_file, verbose):
+    contrib = [f"{count}*{atoms_per_topo}={count * atoms_per_topo}" for count, atoms_per_topo in zip(molecule_counts, total_atoms_per_topology)]
+    breakdown = " + ".join(contrib)
     expected_total_atoms = sum(count * atoms_per_topo for count, atoms_per_topo in zip(molecule_counts, total_atoms_per_topology))
-    
+
     if len(pdb_atoms) != expected_total_atoms:
-        breakdown = " + ".join(contrib)
         raise ValueError(
             f"Atom count mismatch: PDB has {len(pdb_atoms)} atoms but expected {expected_total_atoms} "
             f"({breakdown}). Check molecule counts, topology order, and PDB atom ordering."
         )
-    elif verbose:
-        breakdown = " + ".join(contrib)
+    if verbose:
         print(f"Atom count check passed: PDB={len(pdb_atoms)} matches expected {expected_total_atoms} ({breakdown})")
-    
-    # Additional validation for multi-mode: ensure PDB appears to be combined
+
     if multi_mode:
         single_molecule_atoms = total_atoms_per_topology[0] if len(topologies) == 1 else sum(total_atoms_per_topology)
         if len(pdb_atoms) <= single_molecule_atoms:
             print(f"Warning: PDB file '{pdb_file}' contains {len(pdb_atoms)} atoms, but multi-mode expects")
             print(f"         a combined PDB file with {expected_total_atoms} atoms.")
-            print(f"         Ensure you're using a combined PDB file from PackMol or similar tool.")
+            print("         Ensure you're using a combined PDB file from PackMol or similar tool.")
             print(f"         Expected: {expected_total_atoms} atoms ({breakdown})")
         else:
             print(f"✓ PDB file '{pdb_file}' contains {len(pdb_atoms)} atoms (appears to be combined)")
-    
-    # Calculate box dimensions with buffer
-    xlo = np.min(x_coords) - buffer
-    xhi = np.max(x_coords) + buffer
-    ylo = np.min(y_coords) - buffer
-    yhi = np.max(y_coords) + buffer
-    zlo = np.min(z_coords) - buffer
-    zhi = np.max(z_coords) + buffer
-    
-    if verbose:
-        print(f"Box dimensions: X[{xlo:.3f}, {xhi:.3f}], Y[{ylo:.3f}, {yhi:.3f}], Z[{zlo:.3f}, {zhi:.3f}]")
-    
-    # Calculate total bonds, angles, dihedrals
-    total_bonds = sum(count * len(parm.bonds) for count, parm in zip(molecule_counts, all_parms))
-    total_angles = sum(count * len(parm.angles) for count, parm in zip(molecule_counts, all_parms))
-    total_dihedrals = sum(count * len(parm.dihedrals) for count, parm in zip(molecule_counts, all_parms))
-    
-    # Write header information to data file
+
+    return expected_total_atoms
+
+
+def compute_box_bounds(x_coords, y_coords, z_coords, buffer):
+    return BoxBounds(
+        xlo=np.min(x_coords) - buffer,
+        xhi=np.max(x_coords) + buffer,
+        ylo=np.min(y_coords) - buffer,
+        yhi=np.max(y_coords) + buffer,
+        zlo=np.min(z_coords) - buffer,
+        zhi=np.max(z_coords) + buffer,
+    )
+
+
+def write_data_header(data_file, expected_total_atoms, top_ctx, conn_ctx, box_bounds):
     with open(data_file, "a") as f:
         f.write(f"{expected_total_atoms} atoms \n")
-        f.write(f"{len(atom_type_mapping)} atom types \n")
-        f.write(f"{total_bonds} bonds \n")
-        f.write(f"{total_bonds} bond types \n")
-        f.write(f"{total_angles} angles \n")
-        f.write(f"{total_angles} angle types \n")
-        f.write(f"{total_dihedrals} dihedrals \n")
-        f.write(f"{total_dihedrals} dihedral types \n\n")
-        f.write(f"{xlo} {xhi} xlo xhi \n")
-        f.write(f"{ylo} {yhi} ylo yhi \n")
-        f.write(f"{zlo} {zhi} zlo zhi \n\n")
+        f.write(f"{len(top_ctx.atom_type_mapping)} atom types \n")
+        f.write(f"{conn_ctx.bond_count} bonds \n")
+        f.write(f"{conn_ctx.bond_type_count} bond types \n")
+        f.write(f"{conn_ctx.angle_count} angles \n")
+        f.write(f"{conn_ctx.angle_type_count} angle types \n")
+        f.write(f"{conn_ctx.dihedral_count} dihedrals \n")
+        f.write(f"{conn_ctx.dihedral_type_count} dihedral types \n\n")
+        f.write(f"{box_bounds.xlo} {box_bounds.xhi} xlo xhi \n")
+        f.write(f"{box_bounds.ylo} {box_bounds.yhi} ylo yhi \n")
+        f.write(f"{box_bounds.zlo} {box_bounds.zhi} zlo zhi \n\n")
         f.write("Masses \n\n")
-        for i in range(len(atom_type_mapping)):
-            f.write(f"{i+1} {mass_list[i]} \n")
-    
-    # Extract charges from all topologies and adjust per-topology to user targets
+        for i in range(len(top_ctx.atom_type_mapping)):
+            f.write(f"{i+1} {top_ctx.mass_list[i]} \n")
+
+
+def build_charges(all_parms, molecule_counts, charges_target, topologies, verbose):
     if len(charges_target) != len(topologies):
         raise ValueError(f"Number of charges provided ({len(charges_target)}) must match number of topologies ({len(topologies)})")
-    
+
     charges = []
     charge_tol = 1e-6
-    
+
     for topo_idx, (parm, count, target_charge_per_mol) in enumerate(zip(all_parms, molecule_counts, charges_target)):
         topo_charges = np.array([atom.charge for atom in parm.atoms], dtype=float)
         actual_charge_per_mol = float(np.sum(topo_charges))
         diff = target_charge_per_mol - actual_charge_per_mol
-        
+
         if abs(diff) > charge_tol:
             shift = diff / len(topo_charges)
             topo_charges = topo_charges + shift
             if verbose:
-                print(f"Charge adjust topo {topo_idx+1}: actual {actual_charge_per_mol:.6f} -> target {target_charge_per_mol:.6f} (shift {shift:.6f}/atom)")
+                print(
+                    f"Charge adjust topo {topo_idx+1}: actual {actual_charge_per_mol:.6f} -> "
+                    f"target {target_charge_per_mol:.6f} (shift {shift:.6f}/atom)"
+                )
         elif verbose:
             print(f"Charge check topo {topo_idx+1}: {actual_charge_per_mol:.6f} matches target {target_charge_per_mol:.6f}")
-        
-        # Repeat adjusted charges for each molecule of this type
+
         for _ in range(count):
             charges.extend(topo_charges.tolist())
-    
-    # Final sanity on total charge
+
     net_charge = float(np.sum(charges))
     target_total_charge = float(np.sum([c * q for c, q in zip(molecule_counts, charges_target)]))
     if abs(net_charge - target_total_charge) > 1e-4:
         raise ValueError(f"Total charge mismatch after adjustment: got {net_charge:.6f}, expected {target_total_charge:.6f}")
-    elif verbose:
+    if verbose:
         print(f"Total charge check passed: {net_charge:.6f} matches expected {target_total_charge:.6f}")
-    
-    # Precompute molecule spans to map atoms to molecule IDs and topologies
+
+    return charges
+
+
+def build_molecule_spans(all_parms, molecule_counts):
     molecule_spans = []
     running_offset = 0
     for topo_idx, (parm, count) in enumerate(zip(all_parms, molecule_counts)):
@@ -399,225 +441,298 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         for _ in range(count):
             start = running_offset
             end = start + atoms_per_molecule - 1
-            molecule_spans.append({
-                'id': len(molecule_spans) + 1,
-                'topo_idx': topo_idx,
-                'start': start,
-                'end': end,
-                'atoms_per_molecule': atoms_per_molecule
-            })
+            molecule_spans.append(
+                MoleculeSpan(
+                    mol_id=len(molecule_spans) + 1,
+                    topo_idx=topo_idx,
+                    start=start,
+                    end=end,
+                    atoms_per_molecule=atoms_per_molecule,
+                )
+            )
             running_offset += atoms_per_molecule
-    
-    # Generate pair coefficients
+    return molecule_spans
+
+
+def build_pair_coeff_map(atom_type_mapping, nonbonded_params):
     pair_coeff_map = {}
     for atom_type in atom_type_mapping.keys():
         if atom_type in nonbonded_params:
-            lj_epsilon = nonbonded_params[atom_type]['lj_epsilon']
-            lj_sigma = nonbonded_params[atom_type]['lj_sigma']
+            lj_epsilon = nonbonded_params[atom_type]["lj_epsilon"]
+            lj_sigma = nonbonded_params[atom_type]["lj_sigma"]
             type_id = atom_type_mapping[atom_type]
             pair_coeff_map[atom_type] = f"pair_coeff {type_id} {type_id} {lj_epsilon} {lj_sigma} # {atom_type}"
-    
-    # Write atoms section
+    return pair_coeff_map
+
+
+def write_atoms_section(data_file, pdb_atoms, molecule_spans, all_parms, type_remaps, atom_type_mapping, charges, verbose):
     if verbose:
         print("Writing atoms section...")
-    
+
     with open(data_file, "a") as flammps:
         flammps.write("Atoms\n\n")
         span_idx = 0
         for i, pdb_atom in enumerate(pdb_atoms):
-            # Advance span index until the current atom falls inside the molecule span
-            while span_idx < len(molecule_spans) and i > molecule_spans[span_idx]['end']:
+            while span_idx < len(molecule_spans) and i > molecule_spans[span_idx].end:
                 span_idx += 1
-            
+
             if span_idx >= len(molecule_spans):
                 raise ValueError(f"Atom index {i} exceeds computed molecule spans; check PDB ordering.")
-            
+
             span = molecule_spans[span_idx]
-            atom_idx_in_mol = i - span['start']
-            parm = all_parms[span['topo_idx']]
+            atom_idx_in_mol = i - span.start
+            parm = all_parms[span.topo_idx]
             atom_type_str = parm.atoms[atom_idx_in_mol].type
-            canonical_atom_type = type_remaps[span['topo_idx']].get(atom_type_str, atom_type_str)
+            canonical_atom_type = type_remaps[span.topo_idx].get(atom_type_str, atom_type_str)
             atom_type_id = atom_type_mapping.get(canonical_atom_type, 1)
-            molecule_id = span['id']
-            
+
             flammps.write(
-                f"{i+1} {molecule_id} {atom_type_id} {charges[i]:.10f} "
+                f"{i+1} {span.mol_id} {atom_type_id} {charges[i]:.10f} "
                 f"{pdb_atom['x']:.4f} {pdb_atom['y']:.4f} {pdb_atom['z']:.4f} 0 0 0\n"
             )
-    
-    # Process bonds, angles, dihedrals for all topologies
-    bond_count = 0
+
+
+def process_connectivity(all_parms, molecule_counts, topologies):
+    bond_type_registry = {}
+    angle_type_registry = {}
+    dihedral_type_registry = {}
+    bond_coeff_lines = []
+    angle_coeff_lines = []
+    dihedral_coeff_lines = []
+    bond_type_ids_per_topo = []
+    angle_type_ids_per_topo = []
+    dih_entries_per_topo = []
+
+    def dihedral_signature(terms):
+        result = []
+        for term in terms:
+            phi_k = float(term.phi_k)
+            per = int(round(float(term.per)))
+            phase = float(term.phase)
+            if abs(phase) <= 2 * np.pi + 0.1:
+                phase = np.degrees(phase)
+            result.append((round(phi_k, 4), per, round(phase, 4)))
+        return tuple(sorted(result))
+
+    for topo_idx, parm in enumerate(all_parms):
+        bond_type_ids = []
+        for bond in parm.bonds:
+            if bond.type is None:
+                raise ValueError(f"Bond parameters missing for atoms {bond.atom1.idx}-{bond.atom2.idx} in topology {topo_idx+1}")
+            k = float(bond.type.k)
+            req = float(bond.type.req)
+            sig = (round(k, 6), round(req, 6))
+            if sig not in bond_type_registry:
+                type_id = len(bond_type_registry) + 1
+                bond_type_registry[sig] = type_id
+                bond_coeff_lines.append(
+                    f"bond_coeff {type_id} {k:.4f} {req:.4f}  # {bond.atom1.type}-{bond.atom2.type}"
+                )
+            bond_type_ids.append(bond_type_registry[sig])
+        bond_type_ids_per_topo.append(bond_type_ids)
+
+        angle_type_ids = []
+        for angle in parm.angles:
+            if angle.type is None:
+                raise ValueError(
+                    f"Angle parameters missing for atoms {angle.atom1.idx}-{angle.atom2.idx}-{angle.atom3.idx} in topology {topo_idx+1}"
+                )
+            k = float(angle.type.k)
+            theteq = float(angle.type.theteq)
+            sig = (round(k, 6), round(theteq, 6))
+            if sig not in angle_type_registry:
+                type_id = len(angle_type_registry) + 1
+                angle_type_registry[sig] = type_id
+                angle_coeff_lines.append(
+                    f"angle_coeff {type_id} {k:.4f} {theteq:.4f}  # {angle.atom1.type}-{angle.atom2.type}-{angle.atom3.type}"
+                )
+            angle_type_ids.append(angle_type_registry[sig])
+        angle_type_ids_per_topo.append(angle_type_ids)
+
+        dih_by_idx = {}
+        dih_first = {}
+        for dih in parm.dihedrals:
+            if dih.type is None:
+                raise ValueError(
+                    f"Dihedral parameters missing for atoms {dih.atom1.idx}-{dih.atom2.idx}-{dih.atom3.idx}-{dih.atom4.idx} in topology {topo_idx+1}"
+                )
+            idx_key = (dih.atom1.idx, dih.atom2.idx, dih.atom3.idx, dih.atom4.idx)
+            if isinstance(dih.type, (list, tuple)):
+                terms = [term for term in dih.type if term is not None]
+            else:
+                terms = [dih.type]
+            if idx_key not in dih_by_idx:
+                dih_by_idx[idx_key] = []
+                dih_first[idx_key] = dih
+            dih_by_idx[idx_key].extend(terms)
+
+        dih_entries = []
+        for idx_key, terms in dih_by_idx.items():
+            dih = dih_first[idx_key]
+            sig = dihedral_signature(terms)
+            if sig not in dihedral_type_registry:
+                type_id = len(dihedral_type_registry) + 1
+                dihedral_type_registry[sig] = type_id
+                coeff_str = " ".join(f"{phi_k:.4f} {per} {phase:.4f}" for phi_k, per, phase in sig)
+                dihedral_coeff_lines.append(
+                    f"dihedral_coeff {type_id} {len(sig)} {coeff_str}  # {dih.atom1.type}-{dih.atom2.type}-{dih.atom3.type}-{dih.atom4.type}"
+                )
+            dih_entries.append((dihedral_type_registry[sig], dih))
+        dih_entries_per_topo.append(dih_entries)
+
     bond_lines = []
-    bond_coeffs_by_topo = [[] for _ in topologies]
-    bond_debug = []  # type_id atom1 atom2 k req topo_idx mol_idx
-    
-    angle_count = 0
     angle_lines = []
-    angle_coeffs_by_topo = [[] for _ in topologies]
-    angle_debug = []  # type_id a1 a2 a3 k theta topo_idx mol_idx
-    
-    dihedral_count = 0
     dihedral_lines = []
-    dihedral_coeffs_by_topo = [[] for _ in topologies]
-    dihedral_debug = []  # type_id a1 a2 a3 a4 n_terms (k n phase)* topo_idx mol_idx
-    
+    bond_debug = []
+    angle_debug = []
+    dihedral_debug = []
+    bond_count = 0
+    angle_count = 0
+    dihedral_count = 0
     atom_offset = 0
-    
+
     for topo_idx, (parm, count) in enumerate(zip(all_parms, molecule_counts)):
         atoms_per_molecule = len(parm.atoms)
-        
-        # Process each replica of this topology
+        bond_type_ids = bond_type_ids_per_topo[topo_idx]
+        angle_type_ids = angle_type_ids_per_topo[topo_idx]
+        dih_entries = dih_entries_per_topo[topo_idx]
+
         for mol_idx in range(count):
             base_offset = atom_offset + mol_idx * atoms_per_molecule
-            
-            # Bonds
-            for bond in parm.bonds:
-                if bond.type is None:
-                    raise ValueError(f"Bond parameters missing for atoms {bond.atom1.idx}-{bond.atom2.idx} in topology {topo_idx+1}")
+
+            for bond_idx, bond in enumerate(parm.bonds):
                 bond_count += 1
+                type_id = bond_type_ids[bond_idx]
                 atom1 = bond.atom1.idx + 1 + base_offset
                 atom2 = bond.atom2.idx + 1 + base_offset
-                k = float(bond.type.k)
-                r0 = float(bond.type.req)
-                bond_lines.append(f"{bond_count} {bond_count} {atom1} {atom2}")
-                bond_coeffs_by_topo[topo_idx].append(f"bond_coeff {bond_count} {k:.4f} {r0:.4f}")
-                bond_debug.append(f"{bond_count}\t{bond_count}\t{atom1}\t{atom2}\t{k:.6f}\t{r0:.6f}\t{topo_idx+1}\t{mol_idx+1}")
-            
-            # Angles
-            for angle in parm.angles:
-                if angle.type is None:
-                    raise ValueError(f"Angle parameters missing for atoms {angle.atom1.idx}-{angle.atom2.idx}-{angle.atom3.idx} in topology {topo_idx+1}")
+                bond_lines.append(f"{bond_count} {type_id} {atom1} {atom2}")
+                if mol_idx == 0:
+                    bond_debug.append(
+                        f"{bond_count}\t{type_id}\t{atom1}\t{atom2}\t{bond.type.k:.6f}\t{bond.type.req:.6f}\t{topo_idx+1}\t{mol_idx+1}"
+                    )
+
+            for angle_idx, angle in enumerate(parm.angles):
                 angle_count += 1
+                type_id = angle_type_ids[angle_idx]
                 atom1 = angle.atom1.idx + 1 + base_offset
                 atom2 = angle.atom2.idx + 1 + base_offset
                 atom3 = angle.atom3.idx + 1 + base_offset
-                k = float(angle.type.k)
-                theta0 = float(angle.type.theteq)
-                angle_lines.append(f"{angle_count} {angle_count} {atom1} {atom2} {atom3}")
-                angle_coeffs_by_topo[topo_idx].append(f"angle_coeff {angle_count} {k:.4f} {theta0:.4f}")
-                angle_debug.append(f"{angle_count}\t{angle_count}\t{atom1}\t{atom2}\t{atom3}\t{k:.6f}\t{theta0:.6f}\t{topo_idx+1}\t{mol_idx+1}")
-            
-            # Dihedrals
-            for dih in parm.dihedrals:
-                # Skip impropers that may be stored separately
-                if dih.type is None:
-                    raise ValueError(f"Dihedral parameters missing for atoms {dih.atom1.idx}-{dih.atom2.idx}-{dih.atom3.idx}-{dih.atom4.idx} in topology {topo_idx+1}")
-                
-                # Collect all multi-term dihedral components (AMBER stores Fourier series as a list)
-                if isinstance(dih.type, (list, tuple)):
-                    terms = [t for t in dih.type if t is not None]
-                else:
-                    terms = [dih.type]
-                
-                if not terms:
-                    raise ValueError(f"Dihedral parameters missing for atoms {dih.atom1.idx}-{dih.atom2.idx}-{dih.atom3.idx}-{dih.atom4.idx} in topology {topo_idx+1}")
-                
+                angle_lines.append(f"{angle_count} {type_id} {atom1} {atom2} {atom3}")
+                if mol_idx == 0:
+                    angle_debug.append(
+                        f"{angle_count}\t{type_id}\t{atom1}\t{atom2}\t{atom3}\t{angle.type.k:.6f}\t{angle.type.theteq:.6f}\t{topo_idx+1}\t{mol_idx+1}"
+                    )
+
+            for type_id, dih in dih_entries:
                 dihedral_count += 1
                 atom1 = dih.atom1.idx + 1 + base_offset
                 atom2 = dih.atom2.idx + 1 + base_offset
                 atom3 = dih.atom3.idx + 1 + base_offset
                 atom4 = dih.atom4.idx + 1 + base_offset
-                
-                coeff_parts = []
-                for term in terms:
-                    phi_k = float(term.phi_k)
-                    per = int(round(float(term.per)))
-                    phase = float(term.phase)
-                    # Heuristic: convert to degrees if value looks like radians
-                    if abs(phase) <= 2 * np.pi + 0.1:
-                        phase = np.degrees(phase)
-                    coeff_parts.append(f"{phi_k:.4f} {per} {phase:.4f}")
-                
-                n_terms = len(coeff_parts)
-                dihedral_lines.append(f"{dihedral_count} {dihedral_count} {atom1} {atom2} {atom3} {atom4}")
-                dihedral_coeffs_by_topo[topo_idx].append(f"dihedral_coeff {dihedral_count} {n_terms} " + " ".join(coeff_parts))
-                dihedral_debug.append(
-                    f"{dihedral_count}\t{dihedral_count}\t{atom1}\t{atom2}\t{atom3}\t{atom4}\t{n_terms}\t"
-                    + "\t".join(coeff_parts)
-                    + f"\t{topo_idx+1}\t{mol_idx+1}"
-                )
-        
+
+                dihedral_lines.append(f"{dihedral_count} {type_id} {atom1} {atom2} {atom3} {atom4}")
+                if mol_idx == 0:
+                    dihedral_debug.append(
+                        f"{dihedral_count}\t{type_id}\t{atom1}\t{atom2}\t{atom3}\t{atom4}\t{topo_idx+1}\t{mol_idx+1}"
+                    )
+
         atom_offset += count * atoms_per_molecule
-    
-    # Write bonds section
+
+    return ConnectivityContext(
+        bond_count=bond_count,
+        angle_count=angle_count,
+        dihedral_count=dihedral_count,
+        bond_type_count=len(bond_type_registry),
+        angle_type_count=len(angle_type_registry),
+        dihedral_type_count=len(dihedral_type_registry),
+        bond_lines=bond_lines,
+        angle_lines=angle_lines,
+        dihedral_lines=dihedral_lines,
+        bond_coeff_lines=bond_coeff_lines,
+        angle_coeff_lines=angle_coeff_lines,
+        dihedral_coeff_lines=dihedral_coeff_lines,
+        bond_debug=bond_debug,
+        angle_debug=angle_debug,
+        dihedral_debug=dihedral_debug,
+    )
+
+
+def write_connectivity_sections(data_file, conn_ctx, verbose):
     if verbose:
         print("Writing bonds section...")
-    
     with open(data_file, "a") as flammps:
         flammps.write("\nBonds \n\n")
-        flammps.write("\n".join(bond_lines) + "\n")
-    
-    # Write angles section
+        flammps.write("\n".join(conn_ctx.bond_lines) + "\n")
+
     if verbose:
         print("Writing angles section...")
-    
     with open(data_file, "a") as flammps:
         flammps.write("\nAngles \n\n")
-        flammps.write("\n".join(angle_lines) + "\n")
-    
-    # Write dihedrals section
+        flammps.write("\n".join(conn_ctx.angle_lines) + "\n")
+
     if verbose:
         print("Writing dihedrals section...")
-    
     with open(data_file, "a") as flammps:
         flammps.write("\nDihedrals \n\n")
-        flammps.write("\n".join(dihedral_lines) + "\n")
+        flammps.write("\n".join(conn_ctx.dihedral_lines) + "\n")
 
-    # Optionally write debug temp files grouped per topology
-    if keep_temp:
-        # pairs.txt: per-topology atom type params (no cross terms)
-        with open("pairs.txt", "w") as ftemp:
-            ftemp.write("# pairs.txt generated by amber_to_lammps.py\n")
-            ftemp.write("# columns: type_id\tname\tepsilon\tsigma\ttopology_sources\n\n")
-            for topo_idx, topo_name in enumerate(topologies):
-                ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
-                for atom_type in sorted(atom_types_per_topology[topo_idx]):
-                    type_id = atom_type_mapping[atom_type]
-                    params = nonbonded_params[atom_type]
-                    origins = ",".join(str(t) for t in sorted(type_origins.get(atom_type, {topo_idx+1})))
-                    ftemp.write(f"{type_id}\t{atom_type}\t{params['lj_epsilon']:.6f}\t{params['lj_sigma']:.6f}\t{origins}\n")
-                ftemp.write("\n")
 
-        # bonds.txt
-        with open("bonds.txt", "w") as ftemp:
-            ftemp.write("# bonds.txt generated by amber_to_lammps.py\n")
-            ftemp.write("# columns: bond_id\tbond_type\tatom1\tatom2\tk\treq\ttopology_idx\tmolecule_idx\n\n")
-            for topo_idx, topo_name in enumerate(topologies):
-                ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
-                topo_lines = [line for line in bond_debug if line.split("\t")[-2] == str(topo_idx + 1)]
-                if topo_lines:
-                    ftemp.write("\n".join(topo_lines) + "\n")
-                else:
-                    ftemp.write("# (none)\n")
-                ftemp.write("\n")
 
-        # angles.txt
-        with open("angles.txt", "w") as ftemp:
-            ftemp.write("# angles.txt generated by amber_to_lammps.py\n")
-            ftemp.write("# columns: angle_id\tangle_type\ta1\ta2\ta3\tk\ttheta\ttopology_idx\tmolecule_idx\n\n")
-            for topo_idx, topo_name in enumerate(topologies):
-                ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
-                topo_lines = [line for line in angle_debug if line.split("\t")[-2] == str(topo_idx + 1)]
-                if topo_lines:
-                    ftemp.write("\n".join(topo_lines) + "\n")
-                else:
-                    ftemp.write("# (none)\n")
-                ftemp.write("\n")
+def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_mapping, nonbonded_params, type_origins, conn_ctx):
+    if not keep_temp:
+        return
 
-        # dihedrals.txt
-        with open("dihedrals.txt", "w") as ftemp:
-            ftemp.write("# dihedrals.txt generated by amber_to_lammps.py\n")
-            ftemp.write("# columns: dih_id\tdih_type\ta1\ta2\ta3\ta4\tn_terms\t(k n phase)*\ttopology_idx\tmolecule_idx\n\n")
-            for topo_idx, topo_name in enumerate(topologies):
-                ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
-                topo_lines = [line for line in dihedral_debug if line.split("\t")[-2] == str(topo_idx + 1)]
-                if topo_lines:
-                    ftemp.write("\n".join(topo_lines) + "\n")
-                else:
-                    ftemp.write("# (none)\n")
-                ftemp.write("\n")
+    with open("pairs.txt", "w") as ftemp:
+        ftemp.write("# pairs.txt generated by amber_to_lammps.py\n")
+        ftemp.write("# columns: type_id\tname\tepsilon\tsigma\ttopology_sources\n\n")
+        for topo_idx, topo_name in enumerate(topologies):
+            ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
+            for atom_type in sorted(atom_types_per_topology[topo_idx]):
+                type_id = atom_type_mapping[atom_type]
+                params = nonbonded_params[atom_type]
+                origins = ",".join(str(t) for t in sorted(type_origins.get(atom_type, {topo_idx+1})))
+                ftemp.write(f"{type_id}\t{atom_type}\t{params['lj_epsilon']:.6f}\t{params['lj_sigma']:.6f}\t{origins}\n")
+            ftemp.write("\n")
 
-    # Write grouped parameter file sections per topology
+    with open("bonds.txt", "w") as ftemp:
+        ftemp.write("# bonds.txt generated by amber_to_lammps.py\n")
+        ftemp.write("# columns: instance_id\ttype_id\tatom1\tatom2\tk\treq\ttopology_idx\tmolecule_idx\n\n")
+        for topo_idx, topo_name in enumerate(topologies):
+            ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
+            topo_lines = [line for line in conn_ctx.bond_debug if line.split("\t")[-2] == str(topo_idx + 1)]
+            if topo_lines:
+                ftemp.write("\n".join(topo_lines) + "\n")
+            else:
+                ftemp.write("# (none)\n")
+            ftemp.write("\n")
+
+    with open("angles.txt", "w") as ftemp:
+        ftemp.write("# angles.txt generated by amber_to_lammps.py\n")
+        ftemp.write("# columns: instance_id\ttype_id\ta1\ta2\ta3\tk\ttheta\ttopology_idx\tmolecule_idx\n\n")
+        for topo_idx, topo_name in enumerate(topologies):
+            ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
+            topo_lines = [line for line in conn_ctx.angle_debug if line.split("\t")[-2] == str(topo_idx + 1)]
+            if topo_lines:
+                ftemp.write("\n".join(topo_lines) + "\n")
+            else:
+                ftemp.write("# (none)\n")
+            ftemp.write("\n")
+
+    with open("dihedrals.txt", "w") as ftemp:
+        ftemp.write("# dihedrals.txt generated by amber_to_lammps.py\n")
+        ftemp.write("# columns: instance_id\ttype_id\ta1\ta2\ta3\ta4\ttopology_idx\tmolecule_idx\n\n")
+        for topo_idx, topo_name in enumerate(topologies):
+            ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
+            topo_lines = [line for line in conn_ctx.dihedral_debug if line.split("\t")[-2] == str(topo_idx + 1)]
+            if topo_lines:
+                ftemp.write("\n".join(topo_lines) + "\n")
+            else:
+                ftemp.write("# (none)\n")
+            ftemp.write("\n")
+
+
+
+def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_coeff_map, conn_ctx):
     printed_pair_types = set()
     with open(param_file, "a") as flammpsparm:
         for topo_idx, topo_name in enumerate(topologies):
@@ -632,44 +747,108 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
                 else:
                     flammpsparm.write(line + "\n")
                     printed_pair_types.add(atom_type)
-            
-            flammpsparm.write("# Bonds\n")
-            if bond_coeffs_by_topo[topo_idx]:
-                flammpsparm.write("\n".join(bond_coeffs_by_topo[topo_idx]) + "\n")
-            else:
-                flammpsparm.write("# (none)\n")
-            
-            flammpsparm.write("# Angles\n")
-            if angle_coeffs_by_topo[topo_idx]:
-                flammpsparm.write("\n".join(angle_coeffs_by_topo[topo_idx]) + "\n")
-            else:
-                flammpsparm.write("# (none)\n")
-            
-            flammpsparm.write("# Dihedrals\n")
-            if dihedral_coeffs_by_topo[topo_idx]:
-                flammpsparm.write("\n".join(dihedral_coeffs_by_topo[topo_idx]) + "\n")
-            else:
-                flammpsparm.write("# (none)\n")
-    
-    # Clean up temporary files
-    if not keep_temp:
-        temp_files = ["bonds.txt", "angles.txt", "dihedrals.txt", "pairs.txt"]
-        for temp_file in temp_files:
-            if os.path.exists(temp_file):
-                os.remove(temp_file)
-    
+
+        flammpsparm.write("\n# Bond Coefficients (deduplicated across all topologies and copies)\n")
+        flammpsparm.write("\n".join(conn_ctx.bond_coeff_lines) + "\n")
+
+        flammpsparm.write("\n# Angle Coefficients (deduplicated across all topologies and copies)\n")
+        flammpsparm.write("\n".join(conn_ctx.angle_coeff_lines) + "\n")
+
+        flammpsparm.write("\n# Dihedral Coefficients (deduplicated across all topologies and copies)\n")
+        flammpsparm.write("\n".join(conn_ctx.dihedral_coeff_lines) + "\n")
+
+
+def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target, buffer=3.8, verbose=False, keep_temp=False):
+    amber_parm_cls = pmd.amber.AmberParm
+    print_details = pmd.tools.actions.printDetails
+
+    multi_mode = detect_multi_mode(topologies, molecule_counts, pdb_file, verbose)
+    cleanup_temp_files(verbose, keep_temp)
+
     if verbose:
-        print(f"Conversion complete!")
-        print(f"Generated files:")
+        print("Converting multiple AMBER topologies to LAMMPS format...")
+        print(f"Output files: {data_file}, {param_file}")
+        for i, (topo, count) in enumerate(zip(topologies, molecule_counts)):
+            print(f"  Topology {i+1}: {topo} ({count} molecules)")
+
+    initialize_output_files(data_file, param_file, topologies, pdb_file)
+    pdb_atoms, x_coords, y_coords, z_coords = parse_pdb_coordinates(pdb_file, verbose)
+    top_ctx = load_topology_context(topologies, verbose, amber_parm_cls, print_details)
+
+    expected_total_atoms = validate_pdb_atom_count(
+        pdb_atoms=pdb_atoms,
+        molecule_counts=molecule_counts,
+        total_atoms_per_topology=top_ctx.total_atoms_per_topology,
+        multi_mode=multi_mode,
+        topologies=topologies,
+        pdb_file=pdb_file,
+        verbose=verbose,
+    )
+
+    box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
+    if verbose:
+        print(
+            f"Box dimensions: X[{box_bounds.xlo:.3f}, {box_bounds.xhi:.3f}], "
+            f"Y[{box_bounds.ylo:.3f}, {box_bounds.yhi:.3f}], "
+            f"Z[{box_bounds.zlo:.3f}, {box_bounds.zhi:.3f}]"
+        )
+
+    conn_ctx = process_connectivity(top_ctx.all_parms, molecule_counts, topologies)
+
+    write_data_header(
+        data_file=data_file,
+        expected_total_atoms=expected_total_atoms,
+        top_ctx=top_ctx,
+        conn_ctx=conn_ctx,
+        box_bounds=box_bounds,
+    )
+
+    charges = build_charges(top_ctx.all_parms, molecule_counts, charges_target, topologies, verbose)
+    molecule_spans = build_molecule_spans(top_ctx.all_parms, molecule_counts)
+    pair_coeff_map = build_pair_coeff_map(top_ctx.atom_type_mapping, top_ctx.nonbonded_params)
+
+    write_atoms_section(
+        data_file=data_file,
+        pdb_atoms=pdb_atoms,
+        molecule_spans=molecule_spans,
+        all_parms=top_ctx.all_parms,
+        type_remaps=top_ctx.type_remaps,
+        atom_type_mapping=top_ctx.atom_type_mapping,
+        charges=charges,
+        verbose=verbose,
+    )
+
+    write_connectivity_sections(data_file, conn_ctx, verbose)
+
+    write_debug_files(
+        keep_temp=keep_temp,
+        topologies=topologies,
+        atom_types_per_topology=top_ctx.atom_types_per_topology,
+        atom_type_mapping=top_ctx.atom_type_mapping,
+        nonbonded_params=top_ctx.nonbonded_params,
+        type_origins=top_ctx.type_origins,
+        conn_ctx=conn_ctx,
+    )
+
+    write_parameter_file(
+        param_file=param_file,
+        topologies=topologies,
+        atom_types_per_topology=top_ctx.atom_types_per_topology,
+        pair_coeff_map=pair_coeff_map,
+        conn_ctx=conn_ctx,
+    )
+
+    if verbose:
+        print("Conversion complete!")
+        print("Generated files:")
         print(f"  - {data_file} (LAMMPS data file)")
         print(f"  - {param_file} (LAMMPS parameters)")
-        print(f"Summary:")
+        print("Summary:")
         print(f"  - {expected_total_atoms} atoms")
-        print(f"  - {bond_count} bonds") 
-        print(f"  - {angle_count} angles")
-        print(f"  - {dihedral_count} dihedrals")
-    
-    # Clean up temporary files at the end
+        print(f"  - {conn_ctx.bond_count} bonds ({conn_ctx.bond_type_count} unique types)")
+        print(f"  - {conn_ctx.angle_count} angles ({conn_ctx.angle_type_count} unique types)")
+        print(f"  - {conn_ctx.dihedral_count} dihedrals ({conn_ctx.dihedral_type_count} unique types)")
+
     cleanup_temp_files(verbose, keep_temp)
 
 def main():
