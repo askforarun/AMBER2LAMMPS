@@ -25,6 +25,25 @@ from dataclasses import dataclass
 import parmed as pmd
 import numpy as np
 
+
+def _parse_pdb_serial(serial_field, fallback=None):
+    """Parse PDB atom serials, accepting Packmol base-36 overflow values."""
+    token = serial_field.strip()
+    if not token:
+        if fallback is None:
+            raise ValueError("Empty PDB atom serial field")
+        return fallback
+
+    try:
+        return int(token)
+    except ValueError:
+        try:
+            return int(token.upper(), 36)
+        except ValueError:
+            if fallback is None:
+                raise
+            return fallback
+
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
@@ -119,14 +138,14 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
         for line in f:
             if line.startswith('ATOM') or line.startswith('HETATM'):
                 try:
-                    atom_num = int(line[6:11].strip())
+                    atom_num = _parse_pdb_serial(line[6:11], fallback=len(atoms) + 1)
                     atom_name = line[12:16].strip()
                     res_name = line[17:20].strip()
                     res_num = int(line[22:26].strip())
                     x_coord = float(line[30:38].strip())
                     y_coord = float(line[38:46].strip())
                     z_coord = float(line[46:54].strip())
-                    
+
                     atoms.append({
                         'num': atom_num,
                         'name': atom_name,
@@ -136,12 +155,12 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
                         'y': y_coord,
                         'z': z_coord
                     })
-                    
+
                     x.append(x_coord)
                     y.append(y_coord)
                     z.append(z_coord)
-                    
-                except (ValueError, IndexError) as e:
+
+                except (ValueError, IndexError):
                     if verbose:
                         print(f"Warning: Could not parse PDB line: {line.strip()}")
                     continue
