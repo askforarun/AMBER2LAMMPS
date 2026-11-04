@@ -26,6 +26,73 @@ import parmed as pmd
 import numpy as np
 
 
+class UnsupportedNonbondedError(ValueError):
+    """Raised when pair-specific parameters cannot be combined safely."""
+
+
+def _amber_lj_pair(parm, type_i, type_j):
+    """Return the raw (A, B) coefficients for two zero-based AMBER LJ types."""
+    ntypes = parm.ptr("ntypes")
+    table_index = parm.parm_data["NONBONDED_PARM_INDEX"][ntypes * type_i + type_j] - 1
+    if table_index < 0:
+        return None
+    return (
+        parm.parm_data["LENNARD_JONES_ACOEF"][table_index],
+        parm.parm_data["LENNARD_JONES_BCOEF"][table_index],
+    )
+
+
+def _close_coefficient(actual, expected, rel_tol=1e-6, abs_tol=1e-12):
+    return abs(actual - expected) <= max(abs_tol, rel_tol * max(abs(actual), abs(expected)))
+
+
+def find_pair_specific_nonbonded_terms(parm):
+    """Describe terms that require explicit I-J pair coefficients."""
+    problems = []
+    ccoef = parm.parm_data.get("LENNARD_JONES_CCOEF", [])
+    nonzero_c4 = sum(not _close_coefficient(value, 0.0) for value in ccoef)
+    if nonzero_c4:
+        problems.append(f"{nonzero_c4} nonzero 12-6-4 C4 coefficient(s)")
+
+    ntypes = parm.ptr("ntypes")
+    diagonal = [_amber_lj_pair(parm, i, i) for i in range(ntypes)]
+    modified_pairs = []
+    for i in range(ntypes):
+        for j in range(i + 1, ntypes):
+            actual = _amber_lj_pair(parm, i, j)
+            if actual is None or diagonal[i] is None or diagonal[j] is None:
+                continue
+
+            ai, bi = diagonal[i]
+            aj, bj = diagonal[j]
+            if ai <= 0.0 or bi <= 0.0 or aj <= 0.0 or bj <= 0.0:
+                expected = (0.0, 0.0)
+            else:
+                rmin_i = (2.0 * ai / bi) ** (1.0 / 6.0)
+                rmin_j = (2.0 * aj / bj) ** (1.0 / 6.0)
+                epsilon_i = bi * bi / (4.0 * ai)
+                epsilon_j = bj * bj / (4.0 * aj)
+                rmin_ij = 0.5 * (rmin_i + rmin_j)
+                epsilon_ij = (epsilon_i * epsilon_j) ** 0.5
+                expected = (epsilon_ij * rmin_ij**12, 2.0 * epsilon_ij * rmin_ij**6)
+
+            if not (
+                _close_coefficient(actual[0], expected[0])
+                and _close_coefficient(actual[1], expected[1])
+            ):
+                modified_pairs.append(f"{i + 1}-{j + 1}")
+
+    if modified_pairs:
+        preview = ", ".join(modified_pairs[:8])
+        if len(modified_pairs) > 8:
+            preview += f", and {len(modified_pairs) - 8} more"
+        problems.append(
+            f"{len(modified_pairs)} off-diagonal LJ pair override(s) "
+            f"(AMBER type pairs {preview})"
+        )
+    return problems
+
+
 def _parse_pdb_serial(serial_field, fallback=None):
     """Parse PDB atom serials, accepting Packmol base-36 overflow values."""
     token = serial_field.strip()
@@ -77,6 +144,10 @@ Examples:
                         help='Keep temporary files (pairs.txt, bonds.txt, angles.txt, dihedrals.txt) after conversion')
     parser.add_argument('--charges', type=float, nargs='+', required=True,
                         help='Target net charge per topology (same length/order as --topologies). Use 0 0 ... for neutral molecules.')
+    parser.add_argument('--c4-cutoff', type=float, default=9.0,
+                        help='Cutoff in Angstrom for generated 12-6-4 hybrid/overlay pair styles (default: 9.0)')
+    parser.add_argument('--c4-coulomb', choices=('long', 'cut'), default='long',
+                        help='Coulomb treatment for generated 12-6-4 pair style (default: long)')
     
     return parser.parse_args()
 
@@ -183,6 +254,9 @@ class TopologyContext:
     atom_types_per_topology: list
     type_remaps: list
     type_origins: dict
+    raw_pair_params: dict
+    has_pair_specific_terms: bool
+    has_c4: bool
 
 
 @dataclass
@@ -278,6 +352,9 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
     atom_types_per_topology = []
     type_remaps = []
     type_origins = {}
+    raw_pair_params = {}
+    has_pair_specific_terms = False
+    has_c4 = False
     param_tol = 1e-6
 
     for i, topology in enumerate(topologies):
@@ -285,6 +362,9 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
             print(f"Loading topology {i+1}: {topology}")
 
         parm = amber_parm_cls(topology)
+        pair_specific = find_pair_specific_nonbonded_terms(parm)
+        has_c4 = has_c4 or any("C4" in item for item in pair_specific)
+        has_pair_specific_terms = has_pair_specific_terms or bool(pair_specific)
         all_parms.append(parm)
         total_atoms_per_topology.append(len(parm.atoms))
         atom_types_per_topology.append(set())
@@ -346,6 +426,46 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
             except (ValueError, IndexError):
                 continue
 
+        nb_index_by_type = {}
+        for atom in parm.atoms:
+            canonical_name = type_remap.get(atom.type, atom.type)
+            nb_index_by_type.setdefault(canonical_name, atom.nb_idx - 1)
+
+        topology_types = sorted(atom_types_per_topology[-1])
+        ccoef = parm.parm_data.get("LENNARD_JONES_CCOEF")
+        for left_pos, left_type in enumerate(topology_types):
+            for right_type in topology_types[left_pos:]:
+                left_nb = nb_index_by_type[left_type]
+                right_nb = nb_index_by_type[right_type]
+                ab = _amber_lj_pair(parm, left_nb, right_nb)
+                if ab is None:
+                    continue
+                ntypes = parm.ptr("ntypes")
+                table_index = parm.parm_data["NONBONDED_PARM_INDEX"][ntypes * left_nb + right_nb] - 1
+                c4 = ccoef[table_index] if ccoef is not None else 0.0
+                key = tuple(sorted((left_type, right_type)))
+                left_lj = nonbonded_params[left_type]
+                right_lj = nonbonded_params[right_type]
+                mixed_epsilon = (left_lj["lj_epsilon"] * right_lj["lj_epsilon"]) ** 0.5
+                mixed_sigma = 0.5 * (left_lj["lj_sigma"] + right_lj["lj_sigma"])
+                expected_a = 4.0 * mixed_epsilon * mixed_sigma**12
+                expected_b = 4.0 * mixed_epsilon * mixed_sigma**6
+                is_override = left_type != right_type and not (
+                    _close_coefficient(ab[0], expected_a)
+                    and _close_coefficient(ab[1], expected_b)
+                )
+                value = (float(ab[0]), float(ab[1]), float(c4), is_override)
+                previous = raw_pair_params.get(key)
+                if previous is not None and (
+                    previous[3] != value[3]
+                    or not all(_close_coefficient(old, new) for old, new in zip(previous[:3], value[:3]))
+                ):
+                    raise UnsupportedNonbondedError(
+                        f"Pair parameters for atom types {key[0]}-{key[1]} conflict between topologies. "
+                        "Rename the atom types or convert these topologies separately."
+                    )
+                raw_pair_params[key] = value
+
     if verbose:
         print(f"Found {len(atom_type_mapping)} unique atom types")
 
@@ -358,6 +478,9 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         atom_types_per_topology=atom_types_per_topology,
         type_remaps=type_remaps,
         type_origins=type_origins,
+        raw_pair_params=raw_pair_params,
+        has_pair_specific_terms=has_pair_specific_terms,
+        has_c4=has_c4,
     )
 
 
@@ -482,6 +605,56 @@ def build_pair_coeff_map(atom_type_mapping, nonbonded_params):
             type_id = atom_type_mapping[atom_type]
             pair_coeff_map[atom_type] = f"pair_coeff {type_id} {type_id} {lj_epsilon} {lj_sigma} # {atom_type}"
     return pair_coeff_map
+
+
+def _ab_to_epsilon_sigma(acoef, bcoef):
+    if acoef <= 0.0 or bcoef <= 0.0:
+        return 0.0, 0.0
+    return bcoef * bcoef / (4.0 * acoef), (acoef / bcoef) ** (1.0 / 6.0)
+
+
+def build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb):
+    """Build a complete I-J matrix, preserving AMBER A, B, and C4 coefficients."""
+    if c4_cutoff <= 0.0:
+        raise ValueError(f"--c4-cutoff must be positive (got {c4_cutoff})")
+
+    atom_types = sorted(top_ctx.atom_type_mapping, key=top_ctx.atom_type_mapping.get)
+    lj_style = f"lj/cut/coul/{c4_coulomb}"
+    lines = []
+    if top_ctx.has_c4:
+        lines.extend([
+            "# 12-6-4 topology: this include configures the required LEPTON overlay.",
+            "# LAMMPS must be built with the LEPTON package.",
+            f"pair_style hybrid/overlay {lj_style} {c4_cutoff:.10g} {c4_cutoff:.10g} lepton {c4_cutoff:.10g}",
+            "pair_modify tail no",
+            "# AMBER's C4 CustomNonbondedForce excludes 1-2, 1-3, and 1-4 pairs.",
+            "pair_modify pair lepton special lj 0.0 0.0 0.0",
+        ])
+
+    for left_pos, left_type in enumerate(atom_types):
+        for right_type in atom_types[left_pos:]:
+            left_id = top_ctx.atom_type_mapping[left_type]
+            right_id = top_ctx.atom_type_mapping[right_type]
+            raw = top_ctx.raw_pair_params.get(tuple(sorted((left_type, right_type))))
+            left = top_ctx.nonbonded_params[left_type]
+            right = top_ctx.nonbonded_params[right_type]
+            epsilon = (left["lj_epsilon"] * right["lj_epsilon"]) ** 0.5
+            sigma = 0.5 * (left["lj_sigma"] + right["lj_sigma"])
+            c4 = raw[2] if raw is not None else 0.0
+            if raw is not None and raw[3]:
+                epsilon, sigma = _ab_to_epsilon_sigma(raw[0], raw[1])
+
+            style_field = f" {lj_style}" if top_ctx.has_c4 else ""
+            lines.append(
+                f"pair_coeff {left_id} {right_id}{style_field} "
+                f"{epsilon:.16g} {sigma:.16g} # {left_type}-{right_type}"
+            )
+            if top_ctx.has_c4 and not _close_coefficient(c4, 0.0):
+                lines.append(
+                    f'pair_coeff {left_id} {right_id} lepton "-{c4:.16g}/r^4" '
+                    f"# C4 {left_type}-{right_type}"
+                )
+    return lines
 
 
 def write_atoms_section(data_file, pdb_atoms, molecule_spans, all_parms, type_remaps, atom_type_mapping, charges, verbose):
@@ -751,21 +924,26 @@ def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_
 
 
 
-def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_coeff_map, conn_ctx):
+def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_coeff_map, conn_ctx,
+                         top_ctx, c4_cutoff, c4_coulomb):
     printed_pair_types = set()
     with open(param_file, "a") as flammpsparm:
-        for topo_idx, topo_name in enumerate(topologies):
-            flammpsparm.write(f"\n# Topology {topo_idx+1}: {topo_name}\n")
-            flammpsparm.write("# Nonbonded\n")
-            for atom_type in sorted(atom_types_per_topology[topo_idx]):
-                line = pair_coeff_map.get(atom_type)
-                if line is None:
-                    continue
-                if atom_type in printed_pair_types:
-                    flammpsparm.write(f"# pair_coeff for {atom_type} already defined above\n")
-                else:
-                    flammpsparm.write(line + "\n")
-                    printed_pair_types.add(atom_type)
+        if top_ctx.has_pair_specific_terms:
+            flammpsparm.write("\n# Explicit AMBER nonbonded I-J coefficient matrix\n")
+            flammpsparm.write("\n".join(build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb)) + "\n")
+        else:
+            for topo_idx, topo_name in enumerate(topologies):
+                flammpsparm.write(f"\n# Topology {topo_idx+1}: {topo_name}\n")
+                flammpsparm.write("# Nonbonded\n")
+                for atom_type in sorted(atom_types_per_topology[topo_idx]):
+                    line = pair_coeff_map.get(atom_type)
+                    if line is None:
+                        continue
+                    if atom_type in printed_pair_types:
+                        flammpsparm.write(f"# pair_coeff for {atom_type} already defined above\n")
+                    else:
+                        flammpsparm.write(line + "\n")
+                        printed_pair_types.add(atom_type)
 
         flammpsparm.write("\n# Bond Coefficients (deduplicated across all topologies and copies)\n")
         flammpsparm.write("\n".join(conn_ctx.bond_coeff_lines) + "\n")
@@ -777,7 +955,8 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
         flammpsparm.write("\n".join(conn_ctx.dihedral_coeff_lines) + "\n")
 
 
-def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target, buffer=3.8, verbose=False, keep_temp=False):
+def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target,
+                 buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long"):
     amber_parm_cls = pmd.amber.AmberParm
     print_details = pmd.tools.actions.printDetails
 
@@ -790,9 +969,9 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         for i, (topo, count) in enumerate(zip(topologies, molecule_counts)):
             print(f"  Topology {i+1}: {topo} ({count} molecules)")
 
-    initialize_output_files(data_file, param_file, topologies, pdb_file)
     pdb_atoms, x_coords, y_coords, z_coords = parse_pdb_coordinates(pdb_file, verbose)
     top_ctx = load_topology_context(topologies, verbose, amber_parm_cls, print_details)
+    initialize_output_files(data_file, param_file, topologies, pdb_file)
 
     expected_total_atoms = validate_pdb_atom_count(
         pdb_atoms=pdb_atoms,
@@ -855,6 +1034,9 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         atom_types_per_topology=top_ctx.atom_types_per_topology,
         pair_coeff_map=pair_coeff_map,
         conn_ctx=conn_ctx,
+        top_ctx=top_ctx,
+        c4_cutoff=c4_cutoff,
+        c4_coulomb=c4_coulomb,
     )
 
     if verbose:
@@ -888,7 +1070,9 @@ def main():
             charges_target=args.charges,
             buffer=args.buffer,
             verbose=args.verbose,
-            keep_temp=args.keep_temp
+            keep_temp=args.keep_temp,
+            c4_cutoff=args.c4_cutoff,
+            c4_coulomb=args.c4_coulomb,
         )
         print(f"✓ Conversion completed successfully!")
         print(f"Output files: {args.data_file}, {args.param_file}")

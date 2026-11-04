@@ -160,6 +160,8 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `-b, --buffer` | optional | Vacuum padding (Å) for the simulation box. Default: `3.8`. |
 | `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
 | `--keep-temp` | optional | Keep temporary files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) grouped by topology. Default: `False`. |
+| `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
+| `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
 | `-h, --help` | optional | Show help message. |
 
 ## How It Works
@@ -169,9 +171,23 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 3. **Atom types and masses**: Atom types are namespaced on conflict across topologies; masses and LJ params are captured per canonical type.
 4. **Coordinates and box**: Coordinates come from the combined PDB; the box is min/max of those coordinates expanded by `buffer`.
 5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules.
-6. **Nonbonded coefficients**: Like–like `pair_coeff` lines are emitted per atom type; cross terms are left to LAMMPS mixing rules.
+6. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package.
 7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.
 8. **Export and cleanup**: Data/parameter files are written; debug files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) are kept if `--keep-temp` is set.
+
+### 12-6-4 and pair-specific Lennard-Jones parameters
+
+Topologies containing nonzero `LENNARD_JONES_CCOEF` values are written using a LAMMPS `hybrid/overlay` pair style. The generated parameter include defines the ordinary 12-6 plus Coulomb sub-style and overlays each nonzero C4 interaction with a Lepton `-C4/r^4` expression. It also emits every I-J LJ coefficient explicitly, preserving off-diagonal changes made by tools such as ParmEd's `changeLJPair`.
+
+LAMMPS must be compiled with the optional **LEPTON** package for 12-6-4 output. Choose the cutoff and Coulomb treatment during conversion, for example:
+
+```bash
+python amber_to_lammps.py znf.data znf.parm znf.pdb \
+  -t znf_1264.prmtop -c 1 --charges 5 \
+  --c4-cutoff 9.0 --c4-coulomb long
+```
+
+With `--c4-coulomb long`, retain a compatible `kspace_style` command in the LAMMPS input. With `--c4-coulomb cut`, no long-range solver is required. Because the generated parameter file configures `pair_style` itself for 12-6-4 systems, do not add another `pair_style` command after including it.
 
 ### Understanding Charge Schemes and Normalization
 
