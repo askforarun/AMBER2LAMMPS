@@ -204,10 +204,21 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
     
     atoms = []
     x, y, z = [], [], []
+    box_bounds = None
     
     with open(pdb_file) as f:
         for line in f:
-            if line.startswith('ATOM') or line.startswith('HETATM'):
+            if line.startswith('CRYST1'):
+                try:
+                    xhi = float(line[6:15].strip())
+                    yhi = float(line[15:24].strip())
+                    zhi = float(line[24:33].strip())
+                    box_bounds = BoxBounds(0,xhi,0,yhi,0,zhi)
+                except (ValueError, IndexError):
+                    if verbose:
+                        print(f"Warning: Could not parse PDB line: {line.strip()}")
+                    continue
+            elif line.startswith('ATOM') or line.startswith('HETATM'):
                 try:
                     atom_num = _parse_pdb_serial(line[6:11], fallback=len(atoms) + 1)
                     atom_name = line[12:16].strip()
@@ -242,7 +253,7 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
     if len(atoms) == 0:
         raise ValueError(f"No atoms found in PDB file '{pdb_file}'. File may be empty or malformed.")
     
-    return atoms, x, y, z
+    return atoms, x, y, z, box_bounds
 
 @dataclass
 class TopologyContext:
@@ -969,7 +980,7 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         for i, (topo, count) in enumerate(zip(topologies, molecule_counts)):
             print(f"  Topology {i+1}: {topo} ({count} molecules)")
 
-    pdb_atoms, x_coords, y_coords, z_coords = parse_pdb_coordinates(pdb_file, verbose)
+    pdb_atoms, x_coords, y_coords, z_coords, box_bounds = parse_pdb_coordinates(pdb_file, verbose)
     top_ctx = load_topology_context(topologies, verbose, amber_parm_cls, print_details)
     initialize_output_files(data_file, param_file, topologies, pdb_file)
 
@@ -983,7 +994,8 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         verbose=verbose,
     )
 
-    box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
+    if not box_bounds:
+        box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
     if verbose:
         print(
             f"Box dimensions: X[{box_bounds.xlo:.3f}, {box_bounds.xhi:.3f}], "
