@@ -162,6 +162,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `--keep-temp` | optional | Keep temporary files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) grouped by topology. Default: `False`. |
 | `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
 | `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
+| `--typelabels` | optional | Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same. Default: `False`. |
 | `-h, --help` | optional | Show help message. |
 
 ## How It Works
