@@ -761,6 +761,7 @@ def process_connectivity(all_parms, molecule_counts, topologies, use_typelabels)
                 raise ValueError(f"Bond parameters missing for atoms {bond.atom1.idx}-{bond.atom2.idx} in topology {topo_idx+1}")
             k = float(bond.type.k)
             req = float(bond.type.req)
+            type_key = (bond.atom1.type, bond.atom2.type)
             if bond.atom1.type > bond.atom2.type:
                 type_key = (bond.atom2.type, bond.atom1.type)
             if use_typelabels:
