@@ -1082,9 +1082,14 @@ def main():
         print(f"✗ Error during conversion: {e}")
         return False
 
+
+def entry_point():
+    """Run the installed console command with conventional process exit codes."""
+    return 0 if main() else 1
+
+
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    sys.exit(entry_point())
 
     
     

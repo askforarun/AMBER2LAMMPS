@@ -23,7 +23,10 @@ sqm.dens
 ANTECHAMBER*
 ATOMTYPE.INF
 
-# Python cache
+# Python packaging and cache files
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/

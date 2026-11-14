@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amber-to-lammps"
+version = "1.0.0"
+description = "Convert AMBER topology and PDB files to LAMMPS data and parameter files"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+authors = [
+  { name = "Arun Sridhar" },
+]
+keywords = ["AMBER", "LAMMPS", "molecular dynamics", "scientific computing"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+  "numpy",
+  "ParmEd",
+]
+
+[project.scripts]
+amber-to-lammps = "amber_to_lammps:entry_point"
+
+[project.urls]
+Homepage = "https://github.com/askforarun/AMBER2LAMMPS"
+Repository = "https://github.com/askforarun/AMBER2LAMMPS"
+Issues = "https://github.com/askforarun/AMBER2LAMMPS/issues"
+DOI = "https://doi.org/10.5281/zenodo.18114886"
+
+[tool.setuptools]
+py-modules = ["amber_to_lammps"]

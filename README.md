@@ -32,8 +32,8 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 - [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
 - [Installation](#installation)
+  - [Install AMBER2LAMMPS](#install-amber2lammps)
   - [AmberTools](#ambertools)
-  - [Python Packages](#python-packages)
   - [LAMMPS](#lammps)
 - [SMILES to PDB Workflow](#smiles-to-pdb-workflow)
 - [Command Reference](#command-reference)
@@ -77,6 +77,27 @@ Tested and validated on:
 
 ## Installation
 
+### Install AMBER2LAMMPS
+
+Install the released package from PyPI:
+
+```bash
+python -m pip install amber-to-lammps
+```
+
+This installs the `amber-to-lammps` command and the `amber_to_lammps` Python module, together with
+the required Python dependencies (`ParmEd` and `NumPy`). Verify the command-line installation with:
+
+```bash
+amber-to-lammps --help
+```
+
+To install the latest source checkout instead, run this from the repository root:
+
+```bash
+python -m pip install .
+```
+
 ### PACKMOL 
 
 Required for running LAMMPS simulation multiple copies of the molecule or mixed molecular systems. Install from:
@@ -96,16 +117,6 @@ activate the environment:
 
 ```bash
 conda activate AmberTools23  # or your AmberTools version
-```
-
-### Python Packages
-
-```bash
-# Recommended
-conda install -c conda-forge parmed numpy
-
-# Alternative
-pip install parmed numpy
 ```
 
 ### LAMMPS
@@ -182,7 +193,7 @@ Topologies containing nonzero `LENNARD_JONES_CCOEF` values are written using a L
 LAMMPS must be compiled with the optional **LEPTON** package for 12-6-4 output. Choose the cutoff and Coulomb treatment during conversion, for example:
 
 ```bash
-python amber_to_lammps.py znf.data znf.parm znf.pdb \
+amber-to-lammps znf.data znf.parm znf.pdb \
   -t znf_1264.prmtop -c 1 --charges 5 \
   --c4-cutoff 9.0 --c4-coulomb long
 ```
@@ -212,8 +223,7 @@ AMBER uses various charge methods including:
 
 ## Tutorial
 
-The tutorial assumes you are running from an AMBER2LAMMPS checkout or otherwise have access to
-`amber_to_lammps.py`.
+The tutorial assumes AMBER2LAMMPS is installed with `python -m pip install amber-to-lammps`.
 
 
 ### CLI with LAMMPS execution
@@ -253,7 +263,7 @@ subprocess.run(cmd3, shell=True)
 #### 2. Run the Conversion
 
 ```bash
-python3 amber_to_lammps.py data.lammps parm.lammps epon.pdb \
+amber-to-lammps data.lammps parm.lammps epon.pdb \
   -t epon.prmtop -c 1 --charges 0 --verbose -b 4.5
 ```
 
@@ -273,23 +283,23 @@ makes it easy to swap parameter sets without regenerating coordinates.
 
 ```bash
 # Custom buffer and verbose logging (adds 5 Å padding)
-python3 amber_to_lammps.py my_data.lammps my_params.lammps ethanol.pdb \
+amber-to-lammps my_data.lammps my_params.lammps ethanol.pdb \
   -t ethanol.prmtop -c 1 --charges 0 --verbose -b 5.0
 
 # Custom output names
-python3 amber_to_lammps.py system.data system.parm system.pdb \
+amber-to-lammps system.data system.parm system.pdb \
   -t system.prmtop -c 1 --charges 0
 
 # Minimal output without verbose logging
-python3 amber_to_lammps.py data.lammps parm.lammps ethanol.pdb \
+amber-to-lammps data.lammps parm.lammps ethanol.pdb \
   -t ethanol.prmtop -c 1 --charges 0 -b 3.0
 
 # Using absolute paths with custom buffer
-python3 amber_to_lammps.py /home/user/lammps/output/data.lammps /home/user/lammps/output/param.lammps /home/user/amber/packmol/combined.pdb \
+amber-to-lammps /home/user/lammps/output/data.lammps /home/user/lammps/output/param.lammps /home/user/amber/packmol/combined.pdb \
   -t /home/user/amber/topology.prmtop -c 1 --charges 0 -b 4.5
 
 # Single topology with multiple copies (e.g., 10 ethanol molecules)
-python3 amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
+amber-to-lammps multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
 If you include `--keep-temp`, the converter will also write `pairs.txt`, `bonds.txt`, `angles.txt`, and `dihedrals.txt`, each grouped by topology (handy for debugging mixed systems).
@@ -439,7 +449,7 @@ packmol < packmol_mix.in
 
 ```bash
 # Convert the mixed molecular system to LAMMPS format
-python amber_to_lammps.py mixed_data.lammps mixed_parm.lammps mixed_system.pdb \
+amber-to-lammps mixed_data.lammps mixed_parm.lammps mixed_system.pdb \
   -t aspirin.prmtop benzene.prmtop ethanol.prmtop -c 1 2 5 --charges 0 0 0 --verbose
 ```
 
@@ -511,7 +521,7 @@ packmol < packmol_multi_ethanol.in
 
 ```bash
 # Convert the multi-copy molecular system to LAMMPS format
-python amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
+amber-to-lammps multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
 
