@@ -1,0 +1,22 @@
+# Dynamics-oriented setup for the committed TIP3P fixture.
+units real
+atom_style full
+boundary p p p
+dielectric 1.0000346111225924
+
+bond_style harmonic
+angle_style harmonic
+dihedral_style fourier
+pair_style lj/cut/coul/long 9.0 9.0
+pair_modify mix arithmetic tail yes table 0
+
+read_data system.data
+include system.parm
+kspace_style pppm 1.0e-6
+
+# This fixture's HW-OW and HW-HW bonds are types 8 and 9. Constraining the
+# triangle reproduces rigid TIP3P geometry. Recheck type IDs for other inputs.
+fix rigid_tip3p all shake 1.0e-6 200 0 b 8 9
+
+thermo 100
+run 0

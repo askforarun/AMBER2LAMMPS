@@ -20,12 +20,13 @@ behavior.
    improper/repeated-term placeholders, emit uniform scaling automatically, and
    reject incompatible profiles.
 2. Add redistributable GLYCAM and AMBER protein fixtures with documented
-   generation recipes and provenance. (GLYCAM fixture added; protein pending.)
+   generation recipes and provenance. (GLYCAM and ff14SB peptide fixtures added.)
 3. Represent different GAFF2 and GLYCAM 1–4 scaling exactly in a non-covalent
    mixed system. (Implemented experimentally with repeated hybrid instances.)
 4. Validate pure GAFF2, pure GLYCAM, pure protein, protein–ligand,
    protein–carbohydrate, GAFF2–GLYCAM, and three-family mixtures.
-5. Add explicit solvent, ions, periodic cells, and HMR variants.
+5. Add explicit solvent, ions, periodic cells, and HMR variants. (TIP3P,
+   Na+/Cl- and an orthorhombic cell are validated; HMR reference pending.)
 6. Compare AMBER and LAMMPS bonded terms, van der Waals, direct and reciprocal
    electrostatics, total potential energy, and per-atom forces in CI.
 7. Treat covalent protein–GLYCAM and GAFF2–GLYCAM linkages as a separate

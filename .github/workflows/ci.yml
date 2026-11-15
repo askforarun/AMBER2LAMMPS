@@ -94,7 +94,7 @@ jobs:
           fi
 
   sander:
-    name: sander/LAMMPS energy and force validation
+    name: sander/LAMMPS AMBER-family validation
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -108,7 +108,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: lammps-build/lmp
-          key: lammps-${{ runner.os }}-${{ runner.arch }}-ubuntu24-gcc-26e5f79-molecule-extra_molecule-kspace-v1
+          key: lammps-${{ runner.os }}-${{ runner.arch }}-ubuntu24-gcc-26e5f79-molecule-extra_molecule-kspace-rigid-v2
 
       # Ubuntu's LAMMPS package omits EXTRA-MOLECULE, which provides the
       # Fourier dihedral style emitted by AMBER2LAMMPS. On a cache miss, build
@@ -140,13 +140,17 @@ jobs:
             -D BUILD_MPI=off \
             -D PKG_MOLECULE=on \
             -D PKG_EXTRA-MOLECULE=on \
-            -D PKG_KSPACE=on
+            -D PKG_KSPACE=on \
+            -D PKG_RIGID=on
           cmake --build lammps-build --parallel 2
 
       - name: Compare fresh AMBER and AMBER2LAMMPS energies and forces
         shell: micromamba-shell {0}
         run: |
           python validation/amber_family_mix/validate_sander.py \
+            --sander "$CONDA_PREFIX/bin/sander" \
+            --lammps lammps-build/lmp
+          python validation/amber_protein_water_ions/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
 

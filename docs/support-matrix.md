@@ -33,10 +33,11 @@ independent AMBER engine.
 | Hydrogen mass repartitioning | Regression-tested | Per-atom mass variants and unchanged LJ parameters are tested |
 | Orthorhombic periodic `CRYST1` cells | **Validated** in the mixed fixture | Same 30 Angstrom cell used by `sander` and LAMMPS |
 | Triclinic `CRYST1` cells | **Unsupported** | Clear error; tilt factors are not inferred from PDB coordinates |
-| AMBER protein force fields | Planned | No protein energy-and-force fixture yet; no support claim |
+| ff14SB capped peptide | **Validated** | ACE-ALA-NME energy and all Cartesian forces compared with `sander` |
+| Larger folded proteins | Planned | The peptide covers ff14SB terms, but a representative folded-protein fixture remains desirable |
 | Protein + GAFF2 ligand | Planned | Requires protein fixture and mixed-system validation |
 | Protein + GLYCAM carbohydrate | Planned | Requires protein fixture and linkage/non-covalent cases |
-| Explicit AMBER water and ions | Planned | No periodic solvent/ion reference fixture yet |
+| TIP3P water with Na+/Cl- | **Validated** | 380-water periodic ff14SB fixture; energy/force validation and SHAKE example |
 | Covalent bonds between separate input topologies | **Unsupported** | Input topologies are independent molecule templates; cross-topology connectivity is not invented |
 | Reactive, polarizable or many-body models | Out of scope | The converter targets classical fixed-charge AMBER-family topologies |
 

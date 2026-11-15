@@ -1,0 +1,56 @@
+# Force field parameters generated from AMBER topologies
+
+# AMBER 1-4 nonbonded scaling read from the topology
+special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333
+
+# Topology 1: /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_protein_water_ions/source/system.prmtop
+# Nonbonded
+pair_coeff 3 3 0.086 3.3996695084235347 # C
+pair_coeff 2 2 0.1094 3.3996695084235347 # CT
+pair_coeff 7 7 0.1094 3.3996695084235347 # CX
+pair_coeff 10 10 0.0356 4.477656957373345 # Cl-
+pair_coeff 6 6 0.0157 1.069078461768407 # H
+pair_coeff 8 8 0.0157 2.471353044121301 # H1
+pair_coeff 1 1 0.0157 2.649532787749369 # HC
+pair_coeff 12 12 0.0 0.0 # HW
+pair_coeff 5 5 0.17 3.249998523775958 # N
+pair_coeff 9 9 0.0874 2.439280690268249 # Na+
+pair_coeff 4 4 0.21 2.959921901149463 # O
+pair_coeff 11 11 0.152 3.150752406575124 # OW
+
+# Bond Coefficients (deduplicated across all topologies and copies)
+bond_coeff 1 570.0000 1.2290  # C-O
+bond_coeff 2 490.0000 1.3350  # C-N
+bond_coeff 3 317.0000 1.5220  # CT-C
+bond_coeff 4 310.0000 1.5260  # CX-CT
+bond_coeff 5 337.0000 1.4490  # N-CX
+bond_coeff 6 340.0000 1.0900  # CT-HC
+bond_coeff 7 434.0000 1.0100  # N-H
+bond_coeff 8 553.0000 0.9572  # HW-OW
+bond_coeff 9 553.0000 1.5136  # HW-HW
+
+# Angle Coefficients (deduplicated across all topologies and copies)
+angle_coeff 1 80.0000 122.9001  # O-C-N
+angle_coeff 2 50.0000 121.9001  # C-N-CX
+angle_coeff 3 80.0000 120.4001  # CT-C-O
+angle_coeff 4 70.0000 116.6000  # CT-C-N
+angle_coeff 5 63.0000 111.1000  # CT-CX-C
+angle_coeff 6 80.0000 109.7000  # N-CX-CT
+angle_coeff 7 63.0000 110.1000  # N-CX-C
+angle_coeff 8 50.0000 120.0001  # C-N-H
+angle_coeff 9 50.0000 109.5000  # HC-CT-C
+angle_coeff 10 35.0000 109.5000  # HC-CT-HC
+angle_coeff 11 50.0000 118.0401  # H-N-CX
+
+# Dihedral Coefficients (deduplicated across all topologies and copies)
+dihedral_coeff 1 1 2.5000 2 180.0001  # O-C-N-CX
+dihedral_coeff 2 4 0.0000 4 0.0000 0.8000 3 0.0000 1.8000 2 0.0000 2.0000 1 0.0000  # C-N-CX-CT
+dihedral_coeff 3 4 0.0000 1 0.0000 0.0000 4 0.0000 0.2700 2 0.0000 0.4200 3 0.0000  # C-N-CX-C
+dihedral_coeff 4 1 0.0000 2 0.0000  # CT-CX-C-O
+dihedral_coeff 5 4 0.0000 4 0.0000 0.2000 1 0.0000 0.2000 2 0.0000 0.4000 3 0.0000  # CT-CX-C-N
+dihedral_coeff 6 4 0.0000 4 0.0000 0.4500 1 180.0001 0.5500 3 180.0001 1.5800 2 180.0001  # N-CX-C-N
+dihedral_coeff 7 1 10.5000 2 180.0001  # CT-N-C-O
+dihedral_coeff 8 2 2.0000 1 0.0000 2.5000 2 180.0001  # O-C-N-H
+dihedral_coeff 9 3 0.0000 2 0.0000 0.0800 3 180.0001 0.8000 1 0.0000  # HC-CT-C-O
+dihedral_coeff 10 1 0.1556 3 0.0000  # HC-CT-CX-C
+dihedral_coeff 11 1 1.1000 2 180.0001  # C-CX-N-H

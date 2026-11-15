@@ -15,6 +15,8 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 - A reproducible GAFF2 ethanol + GLYCAM glucose validation bundle, separated
   into source, `sander`, and AMBER2LAMMPS inputs and outputs.
 - Direct AmberTools `sander` energy-and-force validation as a required CI job.
+- A reproducible ff14SB peptide + TIP3P water + NaCl energy-and-force
+  validation, including a LAMMPS SHAKE example for rigid water dynamics.
 - A supported-system matrix, scientific design document, JOSS-readiness map,
   contribution guide, governance policy, research-use record, and AI-use
   disclosure draft.

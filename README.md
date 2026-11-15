@@ -78,13 +78,15 @@ distribution under the MIT License.
 
 AMBER2LAMMPS targets reusable conversion of classical, fixed-charge
 AMBER-family molecular models; it is not a generic converter for unrelated
-LAMMPS potentials. The current validated reference is a heterogeneous GAFF2 +
-GLYCAM system compared directly with AmberTools `sander` for energy components
-and all Cartesian forces.
+LAMMPS potentials. Current references include a heterogeneous GAFF2 + GLYCAM
+system and an ff14SB peptide in explicit TIP3P water with Na+/Cl-. Both are
+compared directly with AmberTools `sander` for energy components and all
+Cartesian forces.
 
 - [Supported-system and validation matrix](docs/support-matrix.md)
 - [Scientific mapping and extension model](docs/scientific-design.md)
 - [Reproducible `sander` validation](validation/amber_family_mix/README.md)
+- [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
 - [AMBER-family development roadmap](docs/amber-family-roadmap.md)
 - [Research-use and adoption record](docs/research-use.md)
 - [Contribution requirements](CONTRIBUTING.md)
@@ -109,7 +111,7 @@ Tested and validated on:
 - **Structure input**: A PDB file of the molecular structure (or a SMILES string that you convert to PDB; see workflow below). For mixed systems, use a combined PDB file from PACKMOL containing all molecules.
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`. For mixed systems, generate separate `.prmtop` files for each molecule type.
 - **Python**: Python 3.9+ with `parmed` and `numpy`.
-- **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
+- **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE`; explicit-water dynamics examples also require `RIGID` for `fix shake` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
 
@@ -627,12 +629,13 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 ## Validation with sander and InterMol
 
 The required GitHub Actions reference check uses AmberTools **`sander`** as the
-AMBER authority. CI regenerates the GAFF2 ethanol + GLYCAM glucose LAMMPS files,
-runs both engines on identical coordinates and a shared 30 Angstrom periodic
-cell, and compares bonded, van der Waals, electrostatic and total energies plus
-every Cartesian force component. The complete runnable fixture, expected
-results and explicit tolerances are in
-[`validation/amber_family_mix/`](validation/amber_family_mix/README.md).
+AMBER authority. CI regenerates both the GAFF2 + GLYCAM mixture and the
+ff14SB/TIP3P/NaCl system, runs each engine on identical coordinates and cells,
+and compares bonded, van der Waals, electrostatic and total energies plus every
+Cartesian force component. Complete runnable fixtures and explicit tolerances
+are in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md)
+and
+[`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md).
 
 InterMol remains a useful secondary converter-to-converter cross-check and its
 reproducible epon bundle is retained, but it is no longer the required
