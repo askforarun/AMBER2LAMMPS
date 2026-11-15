@@ -2,12 +2,15 @@
 """Compare fresh AMBER2LAMMPS and InterMol epon energies with LAMMPS."""
 
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+
+import parmed as pmd
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,13 +31,18 @@ TOLERANCES = {
     "E_angle": 5.0e-5,
     "E_dihed": 5.0e-5,
     "E_impro": 1.0e-8,
-    "E_pair": 4.0e-2,
+    "E_pair": 1.0e-4,
     "E_vdwl": 1.0e-6,
-    "E_coul": 6.0e-2,
-    "E_long": 3.0e-2,
+    "E_coul": 1.0e-4,
+    "E_long": 1.0e-4,
     "E_tail": 1.0e-7,
-    "PotEng": 4.0e-2,
+    "PotEng": 1.0e-4,
 }
+
+
+def topology_charge(prmtop):
+    """Return the unrounded charge represented by an AMBER topology."""
+    return sum(atom.charge for atom in pmd.load_file(str(prmtop)).atoms)
 
 
 def run(command, cwd, env=None):
@@ -93,6 +101,20 @@ def align_candidate_box(candidate_data, box_lines):
     candidate_data.write_text("\n".join(output) + "\n")
 
 
+def make_candidate_headers_portable(candidate_data, candidate_param):
+    """Remove checkout-specific absolute paths from committed artifacts."""
+    data_text = candidate_data.read_text()
+    data_lines = data_text.splitlines()
+    data_lines[1] = "#Source: epon.prmtop, epon.pdb"
+    candidate_data.write_text("\n".join(data_lines) + "\n")
+
+    param_text = candidate_param.read_text()
+    param_text = param_text.replace(
+        f"# Topology 1: {ROOT / 'epon.prmtop'}", "# Topology 1: epon.prmtop"
+    )
+    candidate_param.write_text(param_text)
+
+
 def parse_thermo(output):
     """Extract the first thermo row containing the energy fields."""
     lines = output.splitlines()
@@ -129,6 +151,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--intermol-dir", type=Path, required=True)
     parser.add_argument("--lammps", type=Path, required=True)
+    parser.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        help="write a user-runnable copy of both LAMMPS validation cases",
+    )
     args = parser.parse_args()
 
     convert_script = args.intermol_dir.resolve() / "intermol" / "convert.py"
@@ -176,20 +203,32 @@ def main():
 
         candidate_data = candidate_out / "epon_validation.data"
         candidate_param = candidate_out / "epon_validation.parm"
+        raw_charge = topology_charge(ROOT / "epon.prmtop")
         amber2lammps(
             data_file=str(candidate_data),
             param_file=str(candidate_param),
             topologies=[str(ROOT / "epon.prmtop")],
             molecule_counts=[1],
             pdb_file=str(ROOT / "epon.pdb"),
-            charges_target=[0],
+            # InterMol preserves the topology charges, so preserve them here too.
+            # Charge normalization is tested separately and must not weaken this
+            # force-field conversion comparison.
+            charges_target=[raw_charge],
         )
 
         intermol_data = intermol_out / "epon_intermol.lmp"
         intermol_input = intermol_out / "epon_intermol.input"
         align_candidate_box(candidate_data, extract_box_lines(intermol_data))
+        make_candidate_headers_portable(candidate_data, candidate_param)
         candidate_input = candidate_out / "epon_validation.input"
-        candidate_input.write_text((ROOT / "epon_validation.input").read_text())
+        input_template = (
+            ROOT
+            / "validation"
+            / "intermol_epon"
+            / "amber2lammps"
+            / "epon_validation.input"
+        )
+        candidate_input.write_text(input_template.read_text())
 
         intermol_energy = parse_thermo(
             run([str(lammps), "-in", intermol_input.name, "-log", "none"], cwd=intermol_out)
@@ -198,6 +237,33 @@ def main():
             run([str(lammps), "-in", candidate_input.name, "-log", "none"], cwd=candidate_out)
         )
         compare(intermol_energy, candidate_energy)
+
+        if args.artifacts_dir:
+            artifacts = args.artifacts_dir.resolve()
+            if artifacts.exists() and any(artifacts.iterdir()):
+                parser.error(f"artifacts directory is not empty: {artifacts}")
+            intermol_artifacts = artifacts / "intermol"
+            candidate_artifacts = artifacts / "amber2lammps"
+            intermol_artifacts.mkdir(parents=True, exist_ok=True)
+            candidate_artifacts.mkdir(parents=True, exist_ok=True)
+            for source in (intermol_data, intermol_input):
+                shutil.copy2(source, intermol_artifacts / source.name)
+            for source in (candidate_data, candidate_param, candidate_input):
+                shutil.copy2(source, candidate_artifacts / source.name)
+            (artifacts / "expected_energies.json").write_text(
+                json.dumps(
+                    {
+                        "units": "kcal/mol",
+                        "topology_charge_e": raw_charge,
+                        "tolerances": TOLERANCES,
+                        "intermol": intermol_energy,
+                        "amber2lammps": candidate_energy,
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n"
+            )
 
     print("InterMol/LAMMPS validation passed.")
 
