@@ -109,22 +109,40 @@ jobs:
           path: intermol
           persist-credentials: false
 
+      # Ubuntu's LAMMPS package omits EXTRA-MOLECULE, which provides the
+      # Fourier dihedral style emitted by AMBER2LAMMPS. Build the same stable
+      # LAMMPS release used for local validation with the required packages.
+      - uses: actions/checkout@v4
+        with:
+          repository: lammps/lammps
+          ref: 26e5f79b4e5aa77b65fc4fbf314b206bf0530b45
+          path: lammps-source
+          persist-credentials: false
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: pyproject.toml
 
-      - name: Install AMBER2LAMMPS and LAMMPS
+      - name: Install AMBER2LAMMPS
         run: |
           python -m pip install --upgrade pip
           # InterMol imports six but does not declare it in its package metadata.
           python -m pip install . six==1.17.0
-          sudo apt-get update
-          sudo apt-get install --yes lammps
+
+      - name: Build LAMMPS with required packages
+        run: |
+          cmake -S lammps-source/cmake -B lammps-build \
+            -D CMAKE_BUILD_TYPE=Release \
+            -D BUILD_MPI=off \
+            -D PKG_MOLECULE=on \
+            -D PKG_EXTRA-MOLECULE=on \
+            -D PKG_KSPACE=on
+          cmake --build lammps-build --parallel 2
 
       - name: Compare fresh InterMol and AMBER2LAMMPS energies
-        run: python validation/validate_intermol.py --intermol-dir intermol --lammps "$(command -v lmp)"
+        run: python validation/validate_intermol.py --intermol-dir intermol --lammps lammps-build/lmp
 
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:
