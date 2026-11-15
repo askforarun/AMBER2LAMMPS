@@ -11,6 +11,13 @@
 
 ![AMBER2LAMMPS converts AMBER prmtop and PDB inputs into LAMMPS data and parameter files](6ce0db32-87a0-4a12-ab3d-44768ded7021.png)
 
+## Watch the 35-second demo
+
+[![AMBER2LAMMPS demo: CLI, MCP server, conversion, and validation](docs/media/amber2lammps-demo.gif)](docs/media/amber2lammps-demo.mp4)
+
+Click the animated preview to open the full MP4. The demo covers PyPI installation, CLI conversion,
+the MCP server for Claude and Codex, generated LAMMPS files, and InterMol energy validation.
+
 Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter formats through CLI or Python API, featuring validation-first error handling. **Can handle multiple AMBER topology files for mixed molecular systems (e.g., drug + solvent mixtures).**
 
 ## Key Features
