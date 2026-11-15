@@ -1,3 +1,12 @@
+<div align="center">
+  <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
+  <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
+  <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 InterMol energy validation ✨</strong></p>
+  <p><strong>🛡️ 30 regression tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
+</div>
+
+---
+
 # Overview
 
 ![AMBER2LAMMPS converts AMBER prmtop and PDB inputs into LAMMPS data and parameter files](6ce0db32-87a0-4a12-ab3d-44768ded7021.png)
