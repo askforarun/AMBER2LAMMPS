@@ -168,12 +168,12 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `-t, --topologies` | yes | One or more AMBER topology files (`.prmtop`) |
 | `-c, --counts` | yes | Molecule counts for each topology (same order/length as `--topologies`) |
 | `--charges` | yes | Target net charge per topology (list matching `--topologies`; use `0 0 ...` for neutrals) |
-| `-b, --buffer` | optional | Vacuum padding (Å) for the simulation box. Default: `3.8`. |
+| `-b, --buffer` | optional | Vacuum padding (Å) when the PDB has no usable `CRYST1` cell. Default: `3.8`. |
 | `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
 | `--keep-temp` | optional | Write debug files `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file (`<stem>` is the data file path without its extension), grouped by topology. Default: `False`. |
 | `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
 | `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
-| `--typelabels` | optional | Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same. Default: `False`. |
+| `--typelabels` | optional | Write LAMMPS atom and bonded type labels. Chemically distinct bonded types remain separate even when their parameters match. Invalid leading characters and whitespace in AMBER names are rewritten to valid, unique labels. Default: `False`. |
 | `-h, --help` | optional | Show help message. |
 
 ## How It Works
@@ -181,7 +181,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 1. **Input validation**: `validate_files` checks that `topologies`, `counts`, and `pdb_file` exist and lengths match. CLI does this automatically; Python API requires calling it yourself.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, dihedrals, masses, and LJ parameters directly from each `.prmtop` (supports multiple topologies).
 3. **Atom types and masses**: Each distinct combination of AMBER type name, LJ parameters, and mass becomes one LAMMPS type. Atoms that share a type name but differ in mass (e.g. hydrogen mass repartitioning) or LJ parameters (conflicts across topologies) get suffixed types such as `c3_top1`. Atoms whose type cannot be resolved stop the conversion with an error.
-4. **Coordinates and box**: Coordinates come from the combined PDB; the box is min/max of those coordinates expanded by `buffer`.
+4. **Coordinates and box**: Coordinates come from the combined PDB. A valid orthogonal `CRYST1` record sets the box to `0…L` and overrides `--buffer`; coordinates outside those bounds rely on periodic LAMMPS boundaries to wrap them into the cell. Placeholder 1×1×1 cells are ignored, and a missing or unreadable record falls back to coordinate min/max expanded by `buffer`. Non-orthogonal cells and cells smaller than the coordinate span stop with a clear error.
 5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules. A warning is always printed when the correction exceeds 0.01 e per molecule.
 6. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package.
 7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.

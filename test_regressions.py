@@ -1,6 +1,7 @@
 """End-to-end regression tests for file safety, HMR masses, atom typing, and charges."""
 
 import contextlib
+import copy
 import io
 import os
 import shutil
@@ -51,6 +52,159 @@ class ConversionTestCase(unittest.TestCase):
                 data_file, param_file, [topology], [1], ETHANOL_PDB, list(charges), **kwargs
             )
         return out.getvalue()
+
+
+class PdbBoxTests(ConversionTestCase):
+    """CRYST1 bounds are used safely, with coordinate bounds as the fallback."""
+
+    def pdb_with_prefix(self, prefix):
+        path = os.path.join(self.tmp, "box.pdb")
+        with open(ETHANOL_PDB) as source, open(path, "w") as target:
+            target.write(prefix)
+            target.write(source.read())
+        return path
+
+    def test_orthogonal_cryst1_sets_box_lengths(self):
+        pdb = self.pdb_with_prefix(
+            "CRYST1   30.000   31.000   32.000  90.00  90.00  90.00 P 1           1\n"
+        )
+        _atoms, _x, _y, _z, box = a2l.parse_pdb_coordinates(pdb)
+        self.assertEqual(box, a2l.BoxBounds(0, 30.0, 0, 31.0, 0, 32.0))
+
+    def test_missing_cryst1_uses_coordinate_fallback(self):
+        _atoms, x, y, z, box = a2l.parse_pdb_coordinates(ETHANOL_PDB)
+        self.assertIsNone(box)
+        fallback = a2l.compute_box_bounds(x, y, z, 3.8)
+        self.assertAlmostEqual(fallback.xlo, min(x) - 3.8)
+        self.assertAlmostEqual(fallback.xhi, max(x) + 3.8)
+        self.assertAlmostEqual(fallback.ylo, min(y) - 3.8)
+        self.assertAlmostEqual(fallback.zhi, max(z) + 3.8)
+
+    def test_nonorthogonal_cryst1_is_rejected(self):
+        pdb = self.pdb_with_prefix(
+            "CRYST1   30.000   31.000   32.000  90.00  90.00 120.00 P 1           1\n"
+        )
+        with self.assertRaisesRegex(ValueError, "Non-orthogonal CRYST1 cells are not supported"):
+            a2l.parse_pdb_coordinates(pdb)
+
+    def test_placeholder_cryst1_uses_coordinate_fallback(self):
+        pdb = self.pdb_with_prefix(
+            "CRYST1    1.000    1.000    1.000  90.00  90.00  90.00 P 1           1\n"
+        )
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            _atoms, _x, _y, _z, box = a2l.parse_pdb_coordinates(pdb)
+        self.assertIsNone(box)
+        self.assertIn("ignoring placeholder", output.getvalue())
+
+    def test_cryst1_smaller_than_coordinate_span_is_rejected(self):
+        pdb = self.pdb_with_prefix(
+            "CRYST1    2.000    2.000    2.000  90.00  90.00  90.00 P 1           1\n"
+        )
+        with self.assertRaisesRegex(ValueError, "smaller than the coordinate span"):
+            a2l.parse_pdb_coordinates(pdb)
+
+    def test_malformed_cryst1_warns_without_verbose(self):
+        pdb = self.pdb_with_prefix("CRYST1  not-a-cell\n")
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            _atoms, _x, _y, _z, box = a2l.parse_pdb_coordinates(pdb)
+        self.assertIsNone(box)
+        self.assertIn("Warning: Could not parse PDB CRYST1 record", output.getvalue())
+
+
+class TypeLabelTests(ConversionTestCase):
+    """Type labels are opt-in and preserve chemically distinct type names."""
+
+    def test_default_output_has_no_type_label_sections(self):
+        self.convert()
+        with open("out.data") as f:
+            data = f.read()
+        self.assertNotIn("Type Labels", data)
+
+    def test_typelabel_output_has_all_label_sections(self):
+        self.convert(use_typelabels=True)
+        with open("out.data") as f:
+            data = f.read()
+        for section in (
+            "Atom Type Labels", "Bond Type Labels", "Angle Type Labels",
+            "Dihedral Type Labels",
+        ):
+            self.assertIn(section, data)
+
+    def test_invalid_and_colliding_atom_names_are_sanitized_uniquely(self):
+        labels = a2l.build_atom_type_labels({"2oh": 1, "type_2oh": 2, "bad type": 3})
+        self.assertEqual(labels["2oh"], "type_2oh")
+        self.assertEqual(labels["type_2oh"], "type_2oh_2")
+        self.assertEqual(labels["bad type"], "bad_type")
+        for label in labels.values():
+            self.assertFalse(label[0].isdigit() or label[0] in "*#")
+            self.assertFalse(any(char.isspace() for char in label))
+
+    def test_digit_leading_atom_type_produces_valid_atom_and_bonded_labels(self):
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        for atom in parm.atoms:
+            if atom.type == "oh":
+                atom.type = "2oh"
+        topology = os.path.join(self.tmp, "digit_type.prmtop")
+        parm.write_parm(topology)
+        self.convert(topology=topology, use_typelabels=True)
+
+        labels = []
+        in_labels = False
+        with open("out.data") as f:
+            for raw in f:
+                line = raw.strip()
+                if line == "Atom Type Labels":
+                    in_labels = True
+                elif line == "Masses":
+                    break
+                elif in_labels:
+                    fields = line.split()
+                    if len(fields) == 2 and fields[0].isdigit():
+                        labels.append(fields[1])
+
+        self.assertTrue(labels)
+        for label in labels:
+            self.assertFalse(label[0].isdigit() or label[0] in "*#")
+            self.assertFalse(any(char.isspace() for char in label))
+
+    def test_equal_parameters_keep_distinct_bond_labels(self):
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        first = parm.bonds[0]
+        second = next(
+            bond for bond in parm.bonds
+            if {bond.atom1.type, bond.atom2.type} != {first.atom1.type, first.atom2.type}
+        )
+        second.type = first.type
+
+        numeric = a2l.process_connectivity([parm], [1], [ETHANOL_PRMTOP], False)
+        labelled = a2l.process_connectivity([parm], [1], [ETHANOL_PRMTOP], True)
+        self.assertGreater(labelled.bond_type_count, numeric.bond_type_count)
+
+        expected = {
+            "-".join(sorted((first.atom1.type, first.atom2.type))),
+            "-".join(sorted((second.atom1.type, second.atom2.type))),
+        }
+        actual = {line.split(maxsplit=1)[1] for line in labelled.bond_type_label_lines}
+        self.assertTrue(expected.issubset(actual))
+
+    def test_same_bond_names_with_different_parameters_get_unique_ids_and_labels(self):
+        first = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        second = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        second.bonds[0].type = copy.copy(second.bonds[0].type)
+        second.bonds[0].type.k += 1.0
+
+        labelled = a2l.process_connectivity(
+            [first, second], [1, 1], [ETHANOL_PRMTOP, ETHANOL_PRMTOP], True
+        )
+        labels = [line.split(maxsplit=1)[1] for line in labelled.bond_type_label_lines]
+        self.assertEqual(len(labels), len(set(labels)))
+
+        first_id = labelled.bond_lines[0].split()[1]
+        second_topology_start = len(first.bonds)
+        second_id = labelled.bond_lines[second_topology_start].split()[1]
+        self.assertNotEqual(first_id, second_id)
 
 
 class DebugFileSafetyTests(ConversionTestCase):
@@ -146,6 +300,12 @@ class HydrogenMassRepartitioningTests(ConversionTestCase):
         self.assertIn("c3", pair)
         self.assertIn("c3_top1", pair)
         self.assertEqual(pair["c3"], pair["c3_top1"])
+
+    def test_hmr_connectivity_labels_use_renamed_atom_types(self):
+        self.convert(topology=self.hmr_prmtop, use_typelabels=True)
+        with open("out.data") as f:
+            data = f.read()
+        self.assertIn("c3-c3_top1", data)
 
     def test_standard_topology_has_one_type_per_amber_type(self):
         self.convert()
