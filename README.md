@@ -2,7 +2,7 @@
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 InterMol energy validation ✨</strong></p>
-  <p><strong>🛡️ 30 regression tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
+  <p><strong>🤖 NEW MCP server · 🛡️ 32 regression tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
 </div>
 
 ---
@@ -19,6 +19,7 @@ Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter 
 - **🧪 Mixed & Replicated Systems**: Handle mixtures (e.g., drug + solvent) and multiple copies of one molecule via `-c`
 - **✅ Validation-First**: Clear errors for missing files, mismatched list lengths, and PDB atom-count/order issues
 - **🔄 CLI + Python API**: Same conversion engine from the command line or `amber2lammps(...)` in Python
+- **🤖 MCP Server**: Let Claude, Codex, and other MCP clients run local conversions through a structured tool
 - **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file, grouped by topology
 
 ## What This Tool Does
@@ -44,6 +45,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 - [What You Need](#what-you-need)
 - [Installation](#installation)
   - [Install AMBER2LAMMPS](#install-amber2lammps)
+  - [MCP Server](#mcp-server)
   - [AmberTools](#ambertools)
   - [LAMMPS](#lammps)
 - [SMILES to PDB Workflow](#smiles-to-pdb-workflow)
@@ -108,6 +110,32 @@ To install the latest source checkout instead, run this from the repository root
 ```bash
 python -m pip install .
 ```
+
+### MCP Server
+
+AMBER2LAMMPS includes an optional local [Model Context Protocol (MCP)](https://modelcontextprotocol.io/)
+server for AI clients. MCP support requires Python 3.11 or newer. Install it from PyPI with:
+
+```bash
+python -m pip install "amber-to-lammps[mcp]"
+```
+
+Configure an MCP client to launch the installed stdio server:
+
+```json
+{
+  "mcpServers": {
+    "amber2lammps": {
+      "command": "amber-to-lammps-mcp"
+    }
+  }
+}
+```
+
+The server exposes a `convert` tool accepting PDB/topology input paths, molecule counts, target
+charges, output paths, and the converter's main options. It writes files only to the paths supplied
+in the tool call. Existing files at the selected data and parameter paths are replaced, so review
+those paths before approving a conversion.
 
 ### PACKMOL 
 

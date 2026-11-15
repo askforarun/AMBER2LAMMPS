@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amber-to-lammps"
-version = "1.0.0"
+version = "1.1.0"
 description = "Convert AMBER topology and PDB files to LAMMPS data and parameter files"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -29,6 +29,12 @@ dependencies = [
 
 [project.scripts]
 amber-to-lammps = "amber_to_lammps:entry_point"
+amber-to-lammps-mcp = "amber_to_lammps_mcp:main"
+
+[project.optional-dependencies]
+mcp = [
+  "mcp>=2,<3; python_version >= '3.11'",
+]
 
 [project.urls]
 Homepage = "https://github.com/askforarun/AMBER2LAMMPS"
@@ -37,4 +43,4 @@ Issues = "https://github.com/askforarun/AMBER2LAMMPS/issues"
 DOI = "https://doi.org/10.5281/zenodo.18114886"
 
 [tool.setuptools]
-py-modules = ["amber_to_lammps"]
+py-modules = ["amber_to_lammps", "amber_to_lammps_mcp"]

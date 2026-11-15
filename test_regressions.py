@@ -11,6 +11,7 @@ import unittest
 import parmed as pmd
 
 import amber_to_lammps as a2l
+import amber_to_lammps_mcp as a2l_mcp
 from amber_to_lammps import amber2lammps
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -52,6 +53,44 @@ class ConversionTestCase(unittest.TestCase):
                 data_file, param_file, [topology], [1], ETHANOL_PDB, list(charges), **kwargs
             )
         return out.getvalue()
+
+
+class McpConversionTests(ConversionTestCase):
+    """The MCP-facing helper validates inputs and uses the conversion engine."""
+
+    def test_mcp_helper_converts_and_returns_absolute_outputs(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB,
+            topologies=[ETHANOL_PRMTOP],
+            counts=[1],
+            charges=[0],
+            data_file="mcp.data",
+            parameter_file="mcp.parm",
+            type_labels=True,
+        )
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(
+            os.path.realpath(result["data_file"]),
+            os.path.realpath(os.path.join(self.tmp, "mcp.data")),
+        )
+        self.assertEqual(
+            os.path.realpath(result["parameter_file"]),
+            os.path.realpath(os.path.join(self.tmp, "mcp.parm")),
+        )
+        self.assertTrue(os.path.isfile(result["data_file"]))
+        self.assertTrue(os.path.isfile(result["parameter_file"]))
+
+    def test_mcp_helper_rejects_mismatched_lists_before_writing(self):
+        with self.assertRaisesRegex(ValueError, "must have the same length"):
+            a2l_mcp.convert_amber_system(
+                pdb_file=ETHANOL_PDB,
+                topologies=[ETHANOL_PRMTOP],
+                counts=[1, 2],
+                charges=[0],
+                data_file="mcp.data",
+                parameter_file="mcp.parm",
+            )
+        self.assertFalse(os.path.exists("mcp.data"))
 
 
 class PdbBoxTests(ConversionTestCase):
