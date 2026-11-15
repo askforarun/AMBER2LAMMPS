@@ -33,20 +33,25 @@ both engines.
 
 ```bash
 python build_amber_reference.py
-conda run -n AmberTools25 sander -O \
-  -i sander.in -o sander.out \
-  -p amber_reference.prmtop -c amber_reference.rst7 \
-  -r sander_restart.rst7 -inf sander.mdinfo
+python validate_sander.py \
+  --sander "$CONDA_PREFIX/bin/sander" \
+  --lammps /path/to/lmp
 ```
 
-For the committed coordinates, both programs report 2.5296 kcal/mol for bonds,
-3.2474 for angles, and 2.9723 for dihedrals. The combined AMBER 1–4 and
-ordinary van der Waals energy agrees with LAMMPS at the printed precision.
-The current total-energy difference is about 0.049 kcal/mol, isolated to the
-real/reciprocal electrostatic split. This fixture therefore proves the hybrid
-representation runs and applies both scaling profiles, but it is not yet the
-final publication-grade validation. The next step is matching the Ewald/PPPM
-settings and adding per-atom force comparison in CI.
+The script rebuilds the combined AMBER reference, runs `sander` and LAMMPS on
+the same coordinates and cell, then compares bonded, van der Waals,
+electrostatic and total energies plus every Cartesian force component. The
+committed result has a total-energy difference of about 0.00007 kcal/mol, a
+maximum force-component difference of 0.0437 kcal/mol/Angstrom, and a force
+RMSE of 0.0135 kcal/mol/Angstrom. See `expected_results.json` for the numerical
+values and pass/fail tolerances.
+
+The LAMMPS input matches AMBER's reported 30x30x30 PME mesh, interpolation
+order 4 and Ewald coefficient 0.42001. It also uses `dielectric
+1.0000346111225924`, the ratio between the LAMMPS real-units Coulomb factor
+(332.06371) and AMBER's factor (332.0522173). Without that explicit conversion,
+the small difference between physical constants obscures the force-field
+comparison.
 
 The example is intentionally non-covalent. Cross-family covalent linkages and
 mixed 12-6-4 systems remain unsupported and are rejected rather than silently

@@ -95,14 +95,15 @@ angle_coeff 4 65.1300 107.3900  # c3-oh-ho
 angle_coeff 5 56.2900 110.3800  # oh-c3-h1
 angle_coeff 6 35.8000 107.7300  # hc-c3-hc
 angle_coeff 7 35.6400 108.5500  # h1-c3-h1
-angle_coeff 8 70.0000 108.5000  # Cg-Cg-Os
-angle_coeff 9 70.0000 107.5000  # Cg-Cg-Oh
-angle_coeff 10 45.0000 113.5000  # Cg-Cg-Cg
-angle_coeff 11 50.0000 111.6000  # Cg-Os-Cg
-angle_coeff 12 60.0000 110.0000  # H1-Cg-Oh
-angle_coeff 13 45.0000 109.5000  # H1-Cg-H1
-angle_coeff 14 55.0000 109.5000  # Cg-Oh-Ho
-angle_coeff 15 45.0000 111.0000  # H1-Cg-Cg
+angle_coeff 8 100.0000 112.0000  # Os-Cg-Oh
+angle_coeff 9 70.0000 108.5000  # Cg-Cg-Os
+angle_coeff 10 70.0000 107.5000  # Cg-Cg-Oh
+angle_coeff 11 45.0000 113.5000  # Cg-Cg-Cg
+angle_coeff 12 50.0000 111.6000  # Cg-Os-Cg
+angle_coeff 13 60.0000 110.0000  # H1-Cg-Oh
+angle_coeff 14 45.0000 109.5000  # H1-Cg-H1
+angle_coeff 15 55.0000 109.5000  # Cg-Oh-Ho
+angle_coeff 16 45.0000 111.0000  # H1-Cg-Cg
 
 # Dihedral Coefficients (deduplicated across all topologies and copies)
 dihedral_coeff 1 1 0.0600 3 0.0000  # c3-c3-oh-ho
@@ -112,12 +113,13 @@ dihedral_coeff 4 1 0.1230 3 0.0000  # h1-c3-oh-ho
 dihedral_coeff 5 3 -0.1000 1 0.0000 0.5500 3 0.0000 0.9500 2 0.0000  # Oh-Cg-Cg-Oh
 dihedral_coeff 6 2 -1.1000 1 0.0000 0.2500 2 0.0000  # Os-Cg-Cg-Oh
 dihedral_coeff 7 1 0.1000 3 0.0000  # Cg-Cg-Cg-Oh
-dihedral_coeff 8 1 -0.2700 1 0.0000  # Os-Cg-Cg-Cg
-dihedral_coeff 9 1 0.4500 1 0.0000  # Cg-Cg-Cg-Cg
-dihedral_coeff 10 1 0.1600 3 0.0000  # Cg-Cg-Os-Cg
-dihedral_coeff 11 1 0.0500 3 0.0000  # H1-Cg-Cg-Os
-dihedral_coeff 12 1 0.1800 3 0.0000  # H1-Cg-Oh-Ho
-dihedral_coeff 13 1 0.1700 3 0.0000  # H1-Cg-Cg-H1
-dihedral_coeff 14 1 0.1500 3 0.0000  # H1-Cg-Cg-Cg
-dihedral_coeff 15 2 0.1000 3 0.0000 0.6000 2 0.0000  # H2-Cg-Os-Cg
-dihedral_coeff 16 1 0.2700 3 0.0000  # Cg-Os-Cg-H1
+dihedral_coeff 8 3 0.9600 3 0.0000 1.0800 1 0.0000 1.3800 2 0.0000  # Oh-Cg-Os-Cg
+dihedral_coeff 9 1 -0.2700 1 0.0000  # Os-Cg-Cg-Cg
+dihedral_coeff 10 1 0.4500 1 0.0000  # Cg-Cg-Cg-Cg
+dihedral_coeff 11 1 0.1600 3 0.0000  # Cg-Cg-Os-Cg
+dihedral_coeff 12 1 0.1800 3 0.0000  # Os-Cg-Oh-Ho
+dihedral_coeff 13 1 0.0500 3 0.0000  # H1-Cg-Cg-Os
+dihedral_coeff 14 1 0.1700 3 0.0000  # H1-Cg-Cg-H1
+dihedral_coeff 15 1 0.1500 3 0.0000  # H1-Cg-Cg-Cg
+dihedral_coeff 16 2 0.1000 3 0.0000 0.6000 2 0.0000  # H2-Cg-Os-Cg
+dihedral_coeff 17 1 0.2700 3 0.0000  # Cg-Os-Cg-H1

@@ -5,3 +5,8 @@ glucose.rst7
 sander.mdinfo
 sander.out
 sander_restart.rst7
+sander_force.mdinfo
+sander_force.out
+sander_force.rst7
+sander.mdfrc
+lammps_forces.dump

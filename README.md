@@ -436,7 +436,7 @@ For systems containing multiple molecule types (e.g., drug + solvent mixtures), 
 
 GAFF2 normally uses SCEE/SCNB 1.2/2.0, while GLYCAM uses 1.0/1.0. The converter detects those values from the topologies and generates two instances of `lj/cut/coul/long` under `pair_style hybrid`. Like-profile interactions use their own instance; cross-family nonbonded interactions use explicit Lorentz–Berthelot coefficients. Do not replace the generated `pair_style`, `pair_modify`, `special_bonds`, or `pair_coeff` commands in the parameter include.
 
-A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` reference setup. This is the first experimental mixed-family fixture; broader protein, solvent, ion, force, and CI validation is still required before general AMBER-family support is claimed.
+A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. This is the first validated mixed-family fixture; broader protein, solvent, ion, and CI coverage is still required before general AMBER-family support is claimed.
 
 ### Mixed Molecular System (Multiple Topologies)
 

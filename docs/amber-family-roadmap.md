@@ -36,11 +36,11 @@ behavior.
 The converter derives SCEE/SCNB scaling from active proper dihedrals. Uniform
 systems write one `special_bonds` command. A non-covalent mixed GAFF2/GLYCAM
 system now writes repeated `pair_style hybrid` instances with per-instance 1–4
-weights and a complete explicit I–J matrix. The first ethanol/glucose fixture
-runs in both LAMMPS and AMBER; bonded and Lennard-Jones terms agree at the
-printed precision. Reciprocal electrostatics still differ by about 0.049
-kcal/mol and must be aligned before this moves from experimental to validated.
-Mixed scaling with 12-6-4 terms remains fail-closed.
+weights and a complete explicit I–J matrix. The ethanol/glucose fixture is
+validated directly against AmberTools `sander`, including energy components
+and all Cartesian forces. With matched PME settings and Coulomb conversion
+factors, total energy differs by about 0.00007 kcal/mol and force RMSE is about
+0.0134 kcal/mol/Angstrom. Mixed scaling with 12-6-4 terms remains fail-closed.
 
 ## Publication target
 

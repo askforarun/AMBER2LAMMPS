@@ -1,0 +1,23 @@
+{
+  "energy_tolerance_kcal_per_mol": 0.0005,
+  "force_max_tolerance_kcal_per_mol_angstrom": 0.1,
+  "force_rmse_tolerance_kcal_per_mol_angstrom": 0.02,
+  "observed": {
+    "energy": {
+      "angle_amber": 145.1164,
+      "angle_lammps": 145.1162,
+      "bond_amber": 11.8089,
+      "bond_lammps": 11.808925,
+      "coulomb_amber": 109.6616,
+      "coulomb_lammps": 109.66166,
+      "dihedral_amber": 6.9114,
+      "dihedral_lammps": 6.9114384,
+      "potential_amber": 275.8453,
+      "potential_lammps": 275.84523,
+      "vdw_amber": 2.347,
+      "vdw_lammps": 2.3470011
+    },
+    "force_max_difference": 0.04363391113281523,
+    "force_rmse": 0.01340987917299921
+  }
+}
