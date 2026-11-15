@@ -8,7 +8,7 @@ Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter 
 - **🧪 Mixed & Replicated Systems**: Handle mixtures (e.g., drug + solvent) and multiple copies of one molecule via `-c`
 - **✅ Validation-First**: Clear errors for missing files, mismatched list lengths, and PDB atom-count/order issues
 - **🔄 CLI + Python API**: Same conversion engine from the command line or `amber2lammps(...)` in Python
-- **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt` grouped by topology
+- **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file, grouped by topology
 
 ## What This Tool Does
 
@@ -70,7 +70,7 @@ Tested and validated on:
 
 - **Structure input**: A PDB file of the molecular structure (or a SMILES string that you convert to PDB; see workflow below). For mixed systems, use a combined PDB file from PACKMOL containing all molecules.
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`. For mixed systems, generate separate `.prmtop` files for each molecule type.
-- **Python**: Python 3.8+ with `parmed` and `numpy`.
+- **Python**: Python 3.9+ with `parmed` and `numpy`.
 - **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
@@ -170,7 +170,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `--charges` | yes | Target net charge per topology (list matching `--topologies`; use `0 0 ...` for neutrals) |
 | `-b, --buffer` | optional | Vacuum padding (Å) for the simulation box. Default: `3.8`. |
 | `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
-| `--keep-temp` | optional | Keep temporary files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) grouped by topology. Default: `False`. |
+| `--keep-temp` | optional | Write debug files `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file (`<stem>` is the data file path without its extension), grouped by topology. Default: `False`. |
 | `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
 | `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
 | `-h, --help` | optional | Show help message. |
@@ -179,12 +179,12 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 
 1. **Input validation**: `validate_files` checks that `topologies`, `counts`, and `pdb_file` exist and lengths match. CLI does this automatically; Python API requires calling it yourself.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, dihedrals, masses, and LJ parameters directly from each `.prmtop` (supports multiple topologies).
-3. **Atom types and masses**: Atom types are namespaced on conflict across topologies; masses and LJ params are captured per canonical type.
+3. **Atom types and masses**: Each distinct combination of AMBER type name, LJ parameters, and mass becomes one LAMMPS type. Atoms that share a type name but differ in mass (e.g. hydrogen mass repartitioning) or LJ parameters (conflicts across topologies) get suffixed types such as `c3_top1`. Atoms whose type cannot be resolved stop the conversion with an error.
 4. **Coordinates and box**: Coordinates come from the combined PDB; the box is min/max of those coordinates expanded by `buffer`.
-5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules.
+5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules. A warning is always printed when the correction exceeds 0.01 e per molecule.
 6. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package.
 7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.
-8. **Export and cleanup**: Data/parameter files are written; debug files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) are kept if `--keep-temp` is set.
+8. **Export**: Data/parameter files are written. Only when `--keep-temp` is set, debug files are written beside the data file with its stem as a prefix (e.g. `results/system.data` → `results/system.pairs.txt`, `results/system.bonds.txt`, ...). Bare `pairs.txt`, `bonds.txt`, `angles.txt`, or `dihedrals.txt` files in the working directory are never touched. Like the data and parameter files, re-running with the same data file name replaces that run's previous debug files; the conversion stops before writing anything if a debug file name would coincide with the parameter file.
 
 ### 12-6-4 and pair-specific Lennard-Jones parameters
 
@@ -217,6 +217,7 @@ AMBER uses various charge methods including:
   - `--charges 0`: adds a uniform offset so total charge is 0 within 1e-6.
   - `--charges +1` (or any integer): adds a uniform offset so the total matches that integer within 1e-6.
   - The same constant is added to every atom, so relative charge differences are preserved.
+  - If the correction exceeds 0.01 e per molecule, a warning is always printed (even without `--verbose`) showing the original net charge, the target, and the per-atom shift. The requested target is still applied; the warning is there to catch a mistyped `--charges` value. Typical charge-fitting residuals (~0.001 e) stay below this threshold.
 
 **Example:** If your system has net charge +0.003 and you specify `--charges 0`, each atom's charge will be reduced by `(0.003 ÷ number_of_atoms)` to reach neutrality.
 
@@ -302,7 +303,7 @@ amber-to-lammps /home/user/lammps/output/data.lammps /home/user/lammps/output/pa
 amber-to-lammps multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
-If you include `--keep-temp`, the converter will also write `pairs.txt`, `bonds.txt`, `angles.txt`, and `dihedrals.txt`, each grouped by topology (handy for debugging mixed systems).
+If you include `--keep-temp`, the converter will also write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, and `<stem>.dihedrals.txt` beside the data file (for `ethanol.data`: `ethanol.pairs.txt`, ...), each grouped by topology (handy for debugging mixed systems).
 `example_lammps_input.lmp` includes `parm.lammps` and reads `data.lammps`; adjust those paths and the file names in example_lammps_input.lmp if you rename outputs.
 
 ### Python API with LAMMPS execution

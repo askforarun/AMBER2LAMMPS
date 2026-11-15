@@ -7,7 +7,7 @@ name = "amber-to-lammps"
 version = "1.0.0"
 description = "Convert AMBER topology and PDB files to LAMMPS data and parameter files"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT"
 authors = [
   { name = "Arun Sridhar" },
