@@ -141,7 +141,7 @@ Examples:
     parser.add_argument('--verbose', action='store_true',
                         help='Enable verbose output')
     parser.add_argument('--keep-temp', action='store_true',
-                        help='Keep temporary files (pairs.txt, bonds.txt, angles.txt, dihedrals.txt) after conversion')
+                        help='Write debug files <data stem>.pairs.txt, .bonds.txt, .angles.txt, .dihedrals.txt beside the data file')
     parser.add_argument('--charges', type=float, nargs='+', required=True,
                         help='Target net charge per topology (same length/order as --topologies). Use 0 0 ... for neutral molecules.')
     parser.add_argument('--c4-cutoff', type=float, default=9.0,
@@ -178,26 +178,32 @@ def validate_files(topologies, molecule_counts, pdb_file):
         print(f"Error: PDB file '{pdb_file}' is not readable")
         sys.exit(1)
 
-def cleanup_temp_files(verbose=False, keep_temp=False):
-    """Remove temporary files if they exist"""
-    if keep_temp:
-        if verbose:
-            print("Keeping temporary files as requested:")
-            temp_files = ['bonds.txt', 'angles.txt', 'dihedrals.txt', 'pairs.txt']
-            for temp_file in temp_files:
-                if os.path.exists(temp_file):
-                    print(f"  - {temp_file}")
-        return
-        
-    temp_files = ['bonds.txt', 'angles.txt', 'dihedrals.txt', 'pairs.txt']
-    for temp_file in temp_files:
-        if os.path.exists(temp_file):
-            try:
-                os.remove(temp_file)
-                if verbose:
-                    print(f"Removed existing temporary file: {temp_file}")
-            except OSError as e:
-                print(f"Warning: Could not remove {temp_file}: {e}")
+DEBUG_FILES = ('pairs.txt', 'bonds.txt', 'angles.txt', 'dihedrals.txt')
+
+
+def debug_file_paths(data_file, param_file=None):
+    """Return {debug name: path} for --keep-temp output, prefixed with the data file's stem.
+
+    Writing ``<stem>.pairs.txt`` etc. beside the data file (rather than bare
+    ``pairs.txt`` in the working directory) keeps --keep-temp from clobbering
+    unrelated files that happen to share those common names.
+    """
+    stem = os.path.splitext(data_file)[0]
+    paths = {name: f"{stem}.{name}" for name in DEBUG_FILES}
+    outputs = {os.path.realpath(p) for p in (data_file, param_file) if p}
+    for path in paths.values():
+        if os.path.realpath(path) in outputs:
+            raise ValueError(
+                f"Debug file '{path}' would overwrite an output file; "
+                "choose a different data or parameter file name."
+            )
+    return paths
+
+# Charge corrections larger than this (in e per molecule) are reported even
+# without --verbose. Charge-fitting round-off (e.g. AM1-BCC) is typically
+# ~1e-3 e per molecule, so 0.01 e flags a genuinely requested change in net
+# charge or a mistyped target without warning on routine neutralization.
+CHARGE_WARNING_THRESHOLD = 0.01
 
 def parse_pdb_coordinates(pdb_file, verbose=False):
     """Parse coordinates and atom information from PDB file"""
@@ -372,6 +378,7 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
     has_pair_specific_terms = False
     has_c4 = False
     param_tol = 1e-6
+    variants_by_amber_type = {}
 
     for i, topology in enumerate(topologies):
         if verbose:
@@ -384,7 +391,7 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         all_parms.append(parm)
         total_atoms_per_topology.append(len(parm.atoms))
         atom_types_per_topology.append(set())
-        type_remap = {}
+        type_remap = {}  # zero-based atom index -> canonical LAMMPS type name
         type_remaps.append(type_remap)
 
         if verbose:
@@ -402,50 +409,70 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
                 continue
 
             try:
+                atom_index = int(parts[0]) - 1
                 atom_type = parts[4]
                 atom_mass = float(parts[8])
                 lj_radius_amber = float(parts[6])
                 lj_depth_amber = float(parts[7])
-                lj_sigma = lj_radius_amber * (1 / (2 ** (1 / 6))) * 2
-
-                canonical_name = atom_type
-
-                if canonical_name in nonbonded_params:
-                    existing = nonbonded_params[canonical_name]
-                    existing_mass = mass_list[atom_type_mapping[canonical_name] - 1]
-                    if (
-                        abs(existing["lj_epsilon"] - lj_depth_amber) > param_tol
-                        or abs(existing["lj_sigma"] - lj_sigma) > param_tol
-                        or abs(existing_mass - atom_mass) > param_tol
-                    ):
-                        base_name = f"{atom_type}_top{i+1}"
-                        canonical_name = base_name
-                        suffix = 2
-                        while canonical_name in nonbonded_params:
-                            canonical_name = f"{base_name}_{suffix}"
-                            suffix += 1
-                        print(f"Atom type conflict for '{atom_type}' between topologies; renaming to '{canonical_name}' for topology {i+1}")
-
-                type_remap[atom_type] = canonical_name
-                atom_types_per_topology[-1].add(canonical_name)
-                type_origins.setdefault(canonical_name, set()).add(i + 1)
-
-                if canonical_name not in atom_type_mapping:
-                    atom_type_mapping[canonical_name] = len(atom_type_mapping) + 1
-                    mass_list.append(atom_mass)
-
-                if canonical_name not in nonbonded_params:
-                    nonbonded_params[canonical_name] = {
-                        "lj_epsilon": lj_depth_amber,
-                        "lj_sigma": lj_sigma,
-                    }
             except (ValueError, IndexError):
                 continue
+            lj_sigma = lj_radius_amber * (1 / (2 ** (1 / 6))) * 2
+
+            # One LAMMPS type per distinct (AMBER type, LJ, mass) combination.
+            # Atoms sharing an AMBER type name can differ in mass (hydrogen mass
+            # repartitioning) or LJ parameters (conflicts between topologies).
+            canonical_name = None
+            for candidate in variants_by_amber_type.get(atom_type, []):
+                existing = nonbonded_params[candidate]
+                existing_mass = mass_list[atom_type_mapping[candidate] - 1]
+                if (
+                    abs(existing["lj_epsilon"] - lj_depth_amber) <= param_tol
+                    and abs(existing["lj_sigma"] - lj_sigma) <= param_tol
+                    and abs(existing_mass - atom_mass) <= param_tol
+                ):
+                    canonical_name = candidate
+                    break
+
+            if canonical_name is None:
+                if atom_type not in atom_type_mapping:
+                    canonical_name = atom_type
+                else:
+                    base_name = f"{atom_type}_top{i+1}"
+                    canonical_name = base_name
+                    suffix = 2
+                    while canonical_name in atom_type_mapping:
+                        canonical_name = f"{base_name}_{suffix}"
+                        suffix += 1
+                    print(
+                        f"Atom type '{atom_type}' has differing LJ or mass parameters "
+                        f"(e.g. hydrogen mass repartitioning or a conflict between topologies); "
+                        f"using '{canonical_name}' for the affected atoms in topology {i+1}"
+                    )
+                variants_by_amber_type.setdefault(atom_type, []).append(canonical_name)
+                atom_type_mapping[canonical_name] = len(atom_type_mapping) + 1
+                mass_list.append(atom_mass)
+                nonbonded_params[canonical_name] = {
+                    "lj_epsilon": lj_depth_amber,
+                    "lj_sigma": lj_sigma,
+                }
+
+            type_remap[atom_index] = canonical_name
+            atom_types_per_topology[-1].add(canonical_name)
+            type_origins.setdefault(canonical_name, set()).add(i + 1)
+
+        missing = [idx + 1 for idx in range(len(parm.atoms)) if idx not in type_remap]
+        if missing:
+            preview = ", ".join(str(idx) for idx in missing[:8])
+            if len(missing) > 8:
+                preview += f", and {len(missing) - 8} more"
+            raise ValueError(
+                f"Could not read atom type, LJ, or mass parameters for {len(missing)} atom(s) "
+                f"in topology {i+1} ({topology}): atom(s) {preview}"
+            )
 
         nb_index_by_type = {}
         for atom in parm.atoms:
-            canonical_name = type_remap.get(atom.type, atom.type)
-            nb_index_by_type.setdefault(canonical_name, atom.nb_idx - 1)
+            nb_index_by_type.setdefault(type_remap[atom.idx], atom.nb_idx - 1)
 
         topology_types = sorted(atom_types_per_topology[-1])
         ccoef = parm.parm_data.get("LENNARD_JONES_CCOEF")
@@ -567,7 +594,14 @@ def build_charges(all_parms, molecule_counts, charges_target, topologies, verbos
         if abs(diff) > charge_tol:
             shift = diff / len(topo_charges)
             topo_charges = topo_charges + shift
-            if verbose:
+            if abs(diff) > CHARGE_WARNING_THRESHOLD:
+                print(
+                    f"Warning: topology {topo_idx+1} ({topologies[topo_idx]}) has net charge "
+                    f"{actual_charge_per_mol:.6f} e but --charges requests {target_charge_per_mol:.6f} e; "
+                    f"shifting every atom by {shift:+.6f} e ({diff:+.6f} e per molecule). "
+                    f"Check --charges if this change was not intended."
+                )
+            elif verbose:
                 print(
                     f"Charge adjust topo {topo_idx+1}: actual {actual_charge_per_mol:.6f} -> "
                     f"target {target_charge_per_mol:.6f} (shift {shift:.6f}/atom)"
@@ -718,10 +752,14 @@ def write_atoms_section(data_file, pdb_atoms, molecule_spans, all_parms, type_re
 
             span = molecule_spans[span_idx]
             atom_idx_in_mol = i - span.start
-            parm = all_parms[span.topo_idx]
-            atom_type_str = parm.atoms[atom_idx_in_mol].type
-            canonical_atom_type = type_remaps[span.topo_idx].get(atom_type_str, atom_type_str)
-            atom_type_id = atom_type_mapping.get(canonical_atom_type, 1)
+            canonical_atom_type = type_remaps[span.topo_idx].get(atom_idx_in_mol)
+            atom_type_id = atom_type_mapping.get(canonical_atom_type)
+            if atom_type_id is None:
+                amber_type = all_parms[span.topo_idx].atoms[atom_idx_in_mol].type
+                raise ValueError(
+                    f"No LAMMPS atom type for atom {i+1} (topology {span.topo_idx+1}, "
+                    f"atom {atom_idx_in_mol+1}, AMBER type '{amber_type}')"
+                )
 
             flammps.write(
                 f"{i+1} {span.mol_id} {atom_type_id} {charges[i]:.10f} "
@@ -949,12 +987,15 @@ def write_connectivity_sections(data_file, conn_ctx, verbose):
 
 
 
-def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_mapping, nonbonded_params, type_origins, conn_ctx):
+def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_mapping, nonbonded_params, type_origins, conn_ctx,
+                      data_file, param_file=None):
     if not keep_temp:
         return
 
-    with open("pairs.txt", "w") as ftemp:
-        ftemp.write("# pairs.txt generated by amber_to_lammps.py\n")
+    paths = debug_file_paths(data_file, param_file)
+
+    with open(paths["pairs.txt"], "w") as ftemp:
+        ftemp.write(f"# {os.path.basename(paths['pairs.txt'])} generated by amber_to_lammps.py\n")
         ftemp.write("# columns: type_id\tname\tepsilon\tsigma\ttopology_sources\n\n")
         for topo_idx, topo_name in enumerate(topologies):
             ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
@@ -965,8 +1006,8 @@ def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_
                 ftemp.write(f"{type_id}\t{atom_type}\t{params['lj_epsilon']:.6f}\t{params['lj_sigma']:.6f}\t{origins}\n")
             ftemp.write("\n")
 
-    with open("bonds.txt", "w") as ftemp:
-        ftemp.write("# bonds.txt generated by amber_to_lammps.py\n")
+    with open(paths["bonds.txt"], "w") as ftemp:
+        ftemp.write(f"# {os.path.basename(paths['bonds.txt'])} generated by amber_to_lammps.py\n")
         ftemp.write("# columns: instance_id\ttype_id\tatom1\tatom2\tk\treq\ttopology_idx\tmolecule_idx\n\n")
         for topo_idx, topo_name in enumerate(topologies):
             ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
@@ -977,8 +1018,8 @@ def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_
                 ftemp.write("# (none)\n")
             ftemp.write("\n")
 
-    with open("angles.txt", "w") as ftemp:
-        ftemp.write("# angles.txt generated by amber_to_lammps.py\n")
+    with open(paths["angles.txt"], "w") as ftemp:
+        ftemp.write(f"# {os.path.basename(paths['angles.txt'])} generated by amber_to_lammps.py\n")
         ftemp.write("# columns: instance_id\ttype_id\ta1\ta2\ta3\tk\ttheta\ttopology_idx\tmolecule_idx\n\n")
         for topo_idx, topo_name in enumerate(topologies):
             ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
@@ -989,8 +1030,8 @@ def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_
                 ftemp.write("# (none)\n")
             ftemp.write("\n")
 
-    with open("dihedrals.txt", "w") as ftemp:
-        ftemp.write("# dihedrals.txt generated by amber_to_lammps.py\n")
+    with open(paths["dihedrals.txt"], "w") as ftemp:
+        ftemp.write(f"# {os.path.basename(paths['dihedrals.txt'])} generated by amber_to_lammps.py\n")
         ftemp.write("# columns: instance_id\ttype_id\ta1\ta2\ta3\ta4\ttopology_idx\tmolecule_idx\n\n")
         for topo_idx, topo_name in enumerate(topologies):
             ftemp.write(f"# Topology {topo_idx+1}: {topo_name}\n")
@@ -1001,6 +1042,7 @@ def write_debug_files(keep_temp, topologies, atom_types_per_topology, atom_type_
                 ftemp.write("# (none)\n")
             ftemp.write("\n")
 
+    print(f"Wrote debug files (--keep-temp): {', '.join(paths.values())}")
 
 
 def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_coeff_map, conn_ctx,
@@ -1039,8 +1081,10 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
     amber_parm_cls = pmd.amber.AmberParm
     print_details = pmd.tools.actions.printDetails
 
+    if keep_temp:
+        debug_file_paths(data_file, param_file)  # fail before writing anything on a name collision
+
     multi_mode = detect_multi_mode(topologies, molecule_counts, pdb_file, verbose)
-    cleanup_temp_files(verbose, keep_temp)
 
     if verbose:
         print("Converting multiple AMBER topologies to LAMMPS format...")
@@ -1125,6 +1169,8 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         nonbonded_params=top_ctx.nonbonded_params,
         type_origins=top_ctx.type_origins,
         conn_ctx=conn_ctx,
+        data_file=data_file,
+        param_file=param_file,
     )
 
     write_parameter_file(
@@ -1148,8 +1194,6 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         print(f"  - {conn_ctx.bond_count} bonds ({conn_ctx.bond_type_count} unique types)")
         print(f"  - {conn_ctx.angle_count} angles ({conn_ctx.angle_type_count} unique types)")
         print(f"  - {conn_ctx.dihedral_count} dihedrals ({conn_ctx.dihedral_type_count} unique types)")
-
-    cleanup_temp_files(verbose, keep_temp)
 
 def main():
     """Main function"""
@@ -1182,9 +1226,14 @@ def main():
         print(f"✗ Error during conversion: {e}")
         return False
 
+
+def entry_point():
+    """Run the installed console command with conventional process exit codes."""
+    return 0 if main() else 1
+
+
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    sys.exit(entry_point())
 
     
     

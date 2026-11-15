@@ -8,7 +8,7 @@ Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter 
 - **🧪 Mixed & Replicated Systems**: Handle mixtures (e.g., drug + solvent) and multiple copies of one molecule via `-c`
 - **✅ Validation-First**: Clear errors for missing files, mismatched list lengths, and PDB atom-count/order issues
 - **🔄 CLI + Python API**: Same conversion engine from the command line or `amber2lammps(...)` in Python
-- **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt` grouped by topology
+- **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file, grouped by topology
 
 ## What This Tool Does
 
@@ -32,8 +32,8 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 - [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
 - [Installation](#installation)
+  - [Install AMBER2LAMMPS](#install-amber2lammps)
   - [AmberTools](#ambertools)
-  - [Python Packages](#python-packages)
   - [LAMMPS](#lammps)
 - [SMILES to PDB Workflow](#smiles-to-pdb-workflow)
 - [Command Reference](#command-reference)
@@ -70,12 +70,33 @@ Tested and validated on:
 
 - **Structure input**: A PDB file of the molecular structure (or a SMILES string that you convert to PDB; see workflow below). For mixed systems, use a combined PDB file from PACKMOL containing all molecules.
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`. For mixed systems, generate separate `.prmtop` files for each molecule type.
-- **Python**: Python 3.8+ with `parmed` and `numpy`.
+- **Python**: Python 3.9+ with `parmed` and `numpy`.
 - **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
 
 ## Installation
+
+### Install AMBER2LAMMPS
+
+Install the released package from PyPI:
+
+```bash
+python -m pip install amber-to-lammps
+```
+
+This installs the `amber-to-lammps` command and the `amber_to_lammps` Python module, together with
+the required Python dependencies (`ParmEd` and `NumPy`). Verify the command-line installation with:
+
+```bash
+amber-to-lammps --help
+```
+
+To install the latest source checkout instead, run this from the repository root:
+
+```bash
+python -m pip install .
+```
 
 ### PACKMOL 
 
@@ -96,16 +117,6 @@ activate the environment:
 
 ```bash
 conda activate AmberTools23  # or your AmberTools version
-```
-
-### Python Packages
-
-```bash
-# Recommended
-conda install -c conda-forge parmed numpy
-
-# Alternative
-pip install parmed numpy
 ```
 
 ### LAMMPS
@@ -159,7 +170,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `--charges` | yes | Target net charge per topology (list matching `--topologies`; use `0 0 ...` for neutrals) |
 | `-b, --buffer` | optional | Vacuum padding (Å) for the simulation box. Default: `3.8`. |
 | `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
-| `--keep-temp` | optional | Keep temporary files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) grouped by topology. Default: `False`. |
+| `--keep-temp` | optional | Write debug files `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file (`<stem>` is the data file path without its extension), grouped by topology. Default: `False`. |
 | `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
 | `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
 | `--typelabels` | optional | Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same. Default: `False`. |
@@ -169,12 +180,12 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 
 1. **Input validation**: `validate_files` checks that `topologies`, `counts`, and `pdb_file` exist and lengths match. CLI does this automatically; Python API requires calling it yourself.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, dihedrals, masses, and LJ parameters directly from each `.prmtop` (supports multiple topologies).
-3. **Atom types and masses**: Atom types are namespaced on conflict across topologies; masses and LJ params are captured per canonical type.
+3. **Atom types and masses**: Each distinct combination of AMBER type name, LJ parameters, and mass becomes one LAMMPS type. Atoms that share a type name but differ in mass (e.g. hydrogen mass repartitioning) or LJ parameters (conflicts across topologies) get suffixed types such as `c3_top1`. Atoms whose type cannot be resolved stop the conversion with an error.
 4. **Coordinates and box**: Coordinates come from the combined PDB; the box is min/max of those coordinates expanded by `buffer`.
-5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules.
+5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules. A warning is always printed when the correction exceeds 0.01 e per molecule.
 6. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package.
 7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.
-8. **Export and cleanup**: Data/parameter files are written; debug files (`pairs.txt`, `bonds.txt`, `angles.txt`, `dihedrals.txt`) are kept if `--keep-temp` is set.
+8. **Export**: Data/parameter files are written. Only when `--keep-temp` is set, debug files are written beside the data file with its stem as a prefix (e.g. `results/system.data` → `results/system.pairs.txt`, `results/system.bonds.txt`, ...). Bare `pairs.txt`, `bonds.txt`, `angles.txt`, or `dihedrals.txt` files in the working directory are never touched. Like the data and parameter files, re-running with the same data file name replaces that run's previous debug files; the conversion stops before writing anything if a debug file name would coincide with the parameter file.
 
 ### 12-6-4 and pair-specific Lennard-Jones parameters
 
@@ -183,7 +194,7 @@ Topologies containing nonzero `LENNARD_JONES_CCOEF` values are written using a L
 LAMMPS must be compiled with the optional **LEPTON** package for 12-6-4 output. Choose the cutoff and Coulomb treatment during conversion, for example:
 
 ```bash
-python amber_to_lammps.py znf.data znf.parm znf.pdb \
+amber-to-lammps znf.data znf.parm znf.pdb \
   -t znf_1264.prmtop -c 1 --charges 5 \
   --c4-cutoff 9.0 --c4-coulomb long
 ```
@@ -207,14 +218,14 @@ AMBER uses various charge methods including:
   - `--charges 0`: adds a uniform offset so total charge is 0 within 1e-6.
   - `--charges +1` (or any integer): adds a uniform offset so the total matches that integer within 1e-6.
   - The same constant is added to every atom, so relative charge differences are preserved.
+  - If the correction exceeds 0.01 e per molecule, a warning is always printed (even without `--verbose`) showing the original net charge, the target, and the per-atom shift. The requested target is still applied; the warning is there to catch a mistyped `--charges` value. Typical charge-fitting residuals (~0.001 e) stay below this threshold.
 
 **Example:** If your system has net charge +0.003 and you specify `--charges 0`, each atom's charge will be reduced by `(0.003 ÷ number_of_atoms)` to reach neutrality.
 
 
 ## Tutorial
 
-The tutorial assumes you are running from an AMBER2LAMMPS checkout or otherwise have access to
-`amber_to_lammps.py`.
+The tutorial assumes AMBER2LAMMPS is installed with `python -m pip install amber-to-lammps`.
 
 
 ### CLI with LAMMPS execution
@@ -254,7 +265,7 @@ subprocess.run(cmd3, shell=True)
 #### 2. Run the Conversion
 
 ```bash
-python3 amber_to_lammps.py data.lammps parm.lammps epon.pdb \
+amber-to-lammps data.lammps parm.lammps epon.pdb \
   -t epon.prmtop -c 1 --charges 0 --verbose -b 4.5
 ```
 
@@ -274,26 +285,26 @@ makes it easy to swap parameter sets without regenerating coordinates.
 
 ```bash
 # Custom buffer and verbose logging (adds 5 Å padding)
-python3 amber_to_lammps.py my_data.lammps my_params.lammps ethanol.pdb \
+amber-to-lammps my_data.lammps my_params.lammps ethanol.pdb \
   -t ethanol.prmtop -c 1 --charges 0 --verbose -b 5.0
 
 # Custom output names
-python3 amber_to_lammps.py system.data system.parm system.pdb \
+amber-to-lammps system.data system.parm system.pdb \
   -t system.prmtop -c 1 --charges 0
 
 # Minimal output without verbose logging
-python3 amber_to_lammps.py data.lammps parm.lammps ethanol.pdb \
+amber-to-lammps data.lammps parm.lammps ethanol.pdb \
   -t ethanol.prmtop -c 1 --charges 0 -b 3.0
 
 # Using absolute paths with custom buffer
-python3 amber_to_lammps.py /home/user/lammps/output/data.lammps /home/user/lammps/output/param.lammps /home/user/amber/packmol/combined.pdb \
+amber-to-lammps /home/user/lammps/output/data.lammps /home/user/lammps/output/param.lammps /home/user/amber/packmol/combined.pdb \
   -t /home/user/amber/topology.prmtop -c 1 --charges 0 -b 4.5
 
 # Single topology with multiple copies (e.g., 10 ethanol molecules)
-python3 amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
+amber-to-lammps multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
-If you include `--keep-temp`, the converter will also write `pairs.txt`, `bonds.txt`, `angles.txt`, and `dihedrals.txt`, each grouped by topology (handy for debugging mixed systems).
+If you include `--keep-temp`, the converter will also write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, and `<stem>.dihedrals.txt` beside the data file (for `ethanol.data`: `ethanol.pairs.txt`, ...), each grouped by topology (handy for debugging mixed systems).
 `example_lammps_input.lmp` includes `parm.lammps` and reads `data.lammps`; adjust those paths and the file names in example_lammps_input.lmp if you rename outputs.
 
 ### Python API with LAMMPS execution
@@ -440,7 +451,7 @@ packmol < packmol_mix.in
 
 ```bash
 # Convert the mixed molecular system to LAMMPS format
-python amber_to_lammps.py mixed_data.lammps mixed_parm.lammps mixed_system.pdb \
+amber-to-lammps mixed_data.lammps mixed_parm.lammps mixed_system.pdb \
   -t aspirin.prmtop benzene.prmtop ethanol.prmtop -c 1 2 5 --charges 0 0 0 --verbose
 ```
 
@@ -512,7 +523,7 @@ packmol < packmol_multi_ethanol.in
 
 ```bash
 # Convert the multi-copy molecular system to LAMMPS format
-python amber_to_lammps.py multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
+amber-to-lammps multi_ethanol_data.lammps multi_ethanol_parm.lammps multi_ethanol.pdb \
   -t ethanol.prmtop -c 10 --charges 0 --verbose
 ```
 
@@ -546,29 +557,22 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 
 Conversion results have been cross-checked with **InterMol**.
 
-Install InterMol: https://github.com/shirtsgroup/InterMol
+The GitHub Actions CI regenerates both the InterMol and AMBER2LAMMPS epon outputs, runs both with
+LAMMPS in the same simulation cell, and checks each reported energy component against an explicit
+tolerance. InterMol is pinned to a tested commit so upstream changes cannot silently alter the
+validation baseline. Both converters preserve epon's raw topology charge during this comparison,
+so charge normalization cannot mask or create electrostatic differences. The nonbonded and total
+energy tolerances are `1e-4` kcal/mol; bonded tolerances are equal or tighter.
 
-**Usage (InterMol):**
-```bash
-python convert.py --amb_in epon.prmtop epon.crd --lammps --odir . --oname epon_converted
-```
-InterMol expects an AMBER coordinate file (`.crd`); `amber_to_lammps.py` uses the PDB for coordinates.
-
-**Committed validation assets:**
-- `epon_converted.input` / `epon_converted.lmp` (InterMol reference)
-- `epon_validation.input` / `epon_validation.data` / `epon_validation.parm` (AMBER2LAMMPS validation snapshot)
-
-`epon_validation.data` is an AMBER2LAMMPS-generated snapshot with box bounds aligned to the
-InterMol cell so the comparison isolates force-field conversion rather than box construction.
-
-```bash
-lmp < epon_converted.input
-lmp < epon_validation.input
-```
+The complete, runnable validation set is in
+[`validation/intermol_epon/`](validation/intermol_epon/README.md). It includes both tools' LAMMPS
+data, parameter, and input files; machine-readable expected energies and tolerances; exact pinned
+versions; commands for running the committed snapshots; and the command that regenerates the full
+comparison used by CI.
 
 **Energy Comparison Results**
 
-*Output from the committed InterMol and AMBER2LAMMPS validation assets above*
+*Output from the charge-equivalent committed validation assets*
 
 | Energy Component | InterMol | AMBER2LAMMPS | Difference |
 |------------------|----------|---------------|------------|
@@ -576,12 +580,12 @@ lmp < epon_validation.input
 | E_angle          | 6.0940384 | 6.0940126     | 0.0000258 |
 | E_dihed          | 12.475809 | 12.475827     | -0.0000180 |
 | E_impro          | 0.0000    | 0.0000        | 0.0000 |
-| E_pair           | -8.8739005 | -8.8427535    | -0.0311470 |
+| E_pair           | -8.8739005 | -8.8739003    | -0.0000002 |
 | E_vdwl           | 10.824738 | 10.824738     | 0.0000 |
-| E_coul           | 97.869973 | 97.927222     | -0.0572490 |
-| E_long           | -117.56861 | -117.59471    | 0.02610 |
+| E_coul           | 97.869973 | 97.869972     | 0.0000010 |
+| E_long           | -117.56861 | -117.56861    | 0.0000000 |
 | E_tail           | -0.0044166818 | -0.0044166819 | 0.0000000001 |
-| **PotEng**       | **12.012074** | **12.043214** | **-0.03114** |
+| **PotEng**       | **12.012074** | **12.012067** | **0.0000070** |
 
 
 ## Contributing

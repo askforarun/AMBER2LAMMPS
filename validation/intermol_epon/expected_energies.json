@@ -1,0 +1,40 @@
+{
+  "amber2lammps": {
+    "E_angle": 6.0940126,
+    "E_bond": 2.3161274,
+    "E_coul": 97.869972,
+    "E_dihed": 12.475827,
+    "E_impro": 0.0,
+    "E_long": -117.56861,
+    "E_pair": -8.8739003,
+    "E_tail": -0.0044166819,
+    "E_vdwl": 10.824738,
+    "PotEng": 12.012067
+  },
+  "intermol": {
+    "E_angle": 6.0940384,
+    "E_bond": 2.3161274,
+    "E_coul": 97.869973,
+    "E_dihed": 12.475809,
+    "E_impro": 0.0,
+    "E_long": -117.56861,
+    "E_pair": -8.8739005,
+    "E_tail": -0.0044166818,
+    "E_vdwl": 10.824738,
+    "PotEng": 12.012074
+  },
+  "tolerances": {
+    "E_angle": 5e-05,
+    "E_bond": 1e-06,
+    "E_coul": 0.0001,
+    "E_dihed": 5e-05,
+    "E_impro": 1e-08,
+    "E_long": 0.0001,
+    "E_pair": 0.0001,
+    "E_tail": 1e-07,
+    "E_vdwl": 1e-06,
+    "PotEng": 0.0001
+  },
+  "topology_charge_e": -0.0029959956756283254,
+  "units": "kcal/mol"
+}
