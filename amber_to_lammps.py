@@ -87,23 +87,17 @@ def topology_14_scaling(parm, topology_name="topology"):
 
 
 def resolve_system_14_scaling(profiles, topologies):
-    """Return a common profile or fail closed on mixed AMBER-family scaling."""
+    """Return the common active profile, or ``None`` for mixed/no profiles."""
     used = {}
     for topology, profile in zip(topologies, profiles):
         if profile is not None:
             used.setdefault(profile, []).append(topology)
-    if len(used) <= 1:
-        return next(iter(used), None)
+    return next(iter(used), None) if len(used) == 1 else None
 
-    details = "; ".join(
-        f"SCEE={profile.scee:g}/SCNB={profile.scnb:g}: {', '.join(names)}"
-        for profile, names in used.items()
-    )
-    raise UnsupportedScalingError(
-        "The input topologies use different AMBER 1-4 scaling profiles. "
-        f"Current LAMMPS output has one global special_bonds setting ({details}). "
-        "Mixed GAFF2/GLYCAM-style scaling is detected but not yet representable exactly."
-    )
+
+def distinct_14_scaling_profiles(profiles):
+    """Return active scaling profiles in stable first-seen order."""
+    return list(dict.fromkeys(profile for profile in profiles if profile is not None))
 
 
 def _amber_lj_pair(parm, type_i, type_j):
@@ -387,6 +381,7 @@ class TopologyContext:
     has_c4: bool
     scaling_profiles: list
     system_14_scaling: object
+    type_scaling_profiles: dict
 
 
 @dataclass
@@ -491,13 +486,15 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
     param_tol = 1e-6
     variants_by_amber_type = {}
     scaling_profiles = []
+    type_scaling_profiles = {}
 
     for i, topology in enumerate(topologies):
         if verbose:
             print(f"Loading topology {i+1}: {topology}")
 
         parm = amber_parm_cls(topology)
-        scaling_profiles.append(topology_14_scaling(parm, topology))
+        topology_scaling = topology_14_scaling(parm, topology)
+        scaling_profiles.append(topology_scaling)
         pair_specific = find_pair_specific_nonbonded_terms(parm)
         has_c4 = has_c4 or any("C4" in item for item in pair_specific)
         has_pair_specific_terms = has_pair_specific_terms or bool(pair_specific)
@@ -542,6 +539,7 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
                     abs(existing["lj_epsilon"] - lj_depth_amber) <= param_tol
                     and abs(existing["lj_sigma"] - lj_sigma) <= param_tol
                     and abs(existing_mass - atom_mass) <= param_tol
+                    and type_scaling_profiles[candidate] == topology_scaling
                 ):
                     canonical_name = candidate
                     break
@@ -568,6 +566,7 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
                     "lj_epsilon": lj_depth_amber,
                     "lj_sigma": lj_sigma,
                 }
+                type_scaling_profiles[canonical_name] = topology_scaling
 
             type_remap[atom_index] = canonical_name
             atom_types_per_topology[-1].add(canonical_name)
@@ -648,6 +647,7 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         has_c4=has_c4,
         scaling_profiles=scaling_profiles,
         system_14_scaling=system_14_scaling,
+        type_scaling_profiles=type_scaling_profiles,
     )
 
 
@@ -664,15 +664,8 @@ def validate_pdb_atom_count(pdb_atoms, molecule_counts, total_atoms_per_topology
     if verbose:
         print(f"Atom count check passed: PDB={len(pdb_atoms)} matches expected {expected_total_atoms} ({breakdown})")
 
-    if multi_mode:
-        single_molecule_atoms = total_atoms_per_topology[0] if len(topologies) == 1 else sum(total_atoms_per_topology)
-        if len(pdb_atoms) <= single_molecule_atoms:
-            print(f"Warning: PDB file '{pdb_file}' contains {len(pdb_atoms)} atoms, but multi-mode expects")
-            print(f"         a combined PDB file with {expected_total_atoms} atoms.")
-            print("         Ensure you're using a combined PDB file from PackMol or similar tool.")
-            print(f"         Expected: {expected_total_atoms} atoms ({breakdown})")
-        else:
-            print(f"✓ PDB file '{pdb_file}' contains {len(pdb_atoms)} atoms (appears to be combined)")
+    if multi_mode and verbose:
+        print(f"✓ Combined PDB '{pdb_file}' contains the expected {len(pdb_atoms)} atoms")
 
     return expected_total_atoms
 
@@ -876,6 +869,80 @@ def build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb):
                     f'pair_coeff {left_id} {right_id} lepton "-{c4:.16g}/r^4" '
                     f"# C4 {left_type}-{right_type}"
                 )
+    return lines
+
+
+def build_mixed_scaling_pair_coeff_lines(top_ctx, cutoff, coulomb):
+    """Build a hybrid I-J matrix for non-covalent mixed-scaling topologies."""
+    if cutoff <= 0.0:
+        raise ValueError(f"--c4-cutoff must be positive (got {cutoff})")
+    if top_ctx.has_c4:
+        raise UnsupportedScalingError(
+            "Combining mixed SCEE/SCNB profiles with 12-6-4 terms is not yet supported."
+        )
+
+    profiles = distinct_14_scaling_profiles(top_ctx.scaling_profiles)
+    if len(profiles) < 2:
+        raise ValueError("Hybrid mixed-scaling output requires at least two active profiles.")
+
+    lj_style = f"lj/cut/coul/{coulomb}"
+    instance_by_profile = {profile: index + 1 for index, profile in enumerate(profiles)}
+    baseline = next(
+        (
+            profile for profile in profiles
+            if profile.lj_weight not in (0.0, 1.0)
+            and profile.coulomb_weight not in (0.0, 1.0)
+        ),
+        None,
+    )
+    if baseline is None:
+        raise UnsupportedScalingError(
+            "LAMMPS hybrid scaling requires a fractional global 1-4 baseline; "
+            "none of the active SCEE/SCNB profiles supplies one."
+        )
+    style_spec = " ".join(f"{lj_style} {cutoff:.10g} {cutoff:.10g}" for _ in profiles)
+    lines = [
+        "# Mixed AMBER-family 1-4 scaling: one hybrid instance per active profile.",
+        "# All I-J coefficients are explicit; cross-profile pairs use Lorentz-Berthelot mixing.",
+        "# LAMMPS requires fractional global 1-4 weights before hybrid instances may override them.",
+        f"special_bonds lj 0.0 0.0 {baseline.lj_weight:.10g} "
+        f"coul 0.0 0.0 {baseline.coulomb_weight:.10g}",
+        f"pair_style hybrid {style_spec}",
+        "pair_modify tail yes",
+    ]
+    for profile, instance in instance_by_profile.items():
+        lines.append(
+            f"pair_modify pair {lj_style} {instance} "
+            f"special lj 0.0 0.0 {profile.lj_weight:.10g} "
+            f"special coul 0.0 0.0 {profile.coulomb_weight:.10g}"
+        )
+
+    atom_types = sorted(top_ctx.atom_type_mapping, key=top_ctx.atom_type_mapping.get)
+    default_instance = 1
+    for left_pos, left_type in enumerate(atom_types):
+        for right_type in atom_types[left_pos:]:
+            left_id = top_ctx.atom_type_mapping[left_type]
+            right_id = top_ctx.atom_type_mapping[right_type]
+            left_profile = top_ctx.type_scaling_profiles[left_type]
+            right_profile = top_ctx.type_scaling_profiles[right_type]
+            instance = (
+                instance_by_profile[left_profile]
+                if left_profile is not None and left_profile == right_profile
+                else default_instance
+            )
+
+            left = top_ctx.nonbonded_params[left_type]
+            right = top_ctx.nonbonded_params[right_type]
+            epsilon = (left["lj_epsilon"] * right["lj_epsilon"]) ** 0.5
+            sigma = 0.5 * (left["lj_sigma"] + right["lj_sigma"])
+            raw = top_ctx.raw_pair_params.get(tuple(sorted((left_type, right_type))))
+            if raw is not None and raw[3]:
+                epsilon, sigma = _ab_to_epsilon_sigma(raw[0], raw[1])
+
+            lines.append(
+                f"pair_coeff {left_id} {right_id} {lj_style} {instance} "
+                f"{epsilon:.16g} {sigma:.16g} # {left_type}-{right_type}"
+            )
     return lines
 
 
@@ -1212,7 +1279,12 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
                          top_ctx, c4_cutoff, c4_coulomb):
     printed_pair_types = set()
     with open(param_file, "a") as flammpsparm:
-        if top_ctx.system_14_scaling is not None:
+        mixed_scaling = len(distinct_14_scaling_profiles(top_ctx.scaling_profiles)) > 1
+        if mixed_scaling:
+            flammpsparm.write("\n".join(
+                build_mixed_scaling_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb)
+            ) + "\n")
+        elif top_ctx.system_14_scaling is not None:
             scaling = top_ctx.system_14_scaling
             flammpsparm.write("# AMBER 1-4 nonbonded scaling read from the topology\n")
             flammpsparm.write(
@@ -1220,7 +1292,9 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
                 f"lj 0.0 0.0 {scaling.lj_weight:.10g} "
                 f"coul 0.0 0.0 {scaling.coulomb_weight:.10g}\n"
             )
-        if top_ctx.has_pair_specific_terms:
+        if mixed_scaling:
+            pass
+        elif top_ctx.has_pair_specific_terms:
             flammpsparm.write("\n# Explicit AMBER nonbonded I-J coefficient matrix\n")
             flammpsparm.write("\n".join(build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb)) + "\n")
         else:

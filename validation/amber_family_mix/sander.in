@@ -1,0 +1,13 @@
+GAFF2 ethanol plus GLYCAM glucose single-point reference
+&cntrl
+  imin=1,
+  maxcyc=0,
+  ntb=1,
+  cut=9.0,
+  ntpr=1,
+  ntx=1,
+  iwrap=0,
+/
+&ewald
+  dsum_tol=1.0e-8,
+/

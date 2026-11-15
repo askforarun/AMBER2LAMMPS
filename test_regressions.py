@@ -17,6 +17,8 @@ from amber_to_lammps import amber2lammps
 HERE = os.path.dirname(os.path.abspath(__file__))
 ETHANOL_PRMTOP = os.path.join(HERE, "ethanol.prmtop")
 ETHANOL_PDB = os.path.join(HERE, "ethanol.pdb")
+GLYCAM_PRMTOP = os.path.join(HERE, "validation", "amber_family_mix", "glucose.prmtop")
+MIXTURE_PDB = os.path.join(HERE, "validation", "amber_family_mix", "ethanol_glucose.pdb")
 DEBUG_FILES = ("pairs.txt", "bonds.txt", "angles.txt", "dihedrals.txt")
 
 
@@ -108,13 +110,15 @@ class AmberFamilyScalingTests(ConversionTestCase):
         scaling = a2l.topology_14_scaling(parm, "epon")
         self.assertEqual(scaling, a2l.SpecialBondScaling(scee=1.2, scnb=2.0))
 
-    def test_mixed_gaff_and_glycam_style_scaling_fails_closed(self):
+    def test_mixed_gaff_and_glycam_style_scaling_has_no_global_profile(self):
         profiles = [
             a2l.SpecialBondScaling(scee=1.2, scnb=2.0),
             a2l.SpecialBondScaling(scee=1.0, scnb=1.0),
         ]
-        with self.assertRaisesRegex(a2l.UnsupportedScalingError, "GAFF2/GLYCAM"):
+        self.assertIsNone(
             a2l.resolve_system_14_scaling(profiles, ["ligand.prmtop", "sugar.prmtop"])
+        )
+        self.assertEqual(a2l.distinct_14_scaling_profiles(profiles), profiles)
 
     def test_parameter_file_emits_topology_derived_special_bonds(self):
         self.convert()
@@ -124,6 +128,48 @@ class AmberFamilyScalingTests(ConversionTestCase):
             "special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333",
             parameters,
         )
+
+    def test_gaff2_glycam_mixture_uses_hybrid_profiles_and_complete_matrix(self):
+        amber2lammps(
+            "mixed.data",
+            "mixed.parm",
+            [ETHANOL_PRMTOP, GLYCAM_PRMTOP],
+            [1, 1],
+            MIXTURE_PDB,
+            [0.0000010021786493, 0.0],
+        )
+        with open("mixed.parm") as stream:
+            parameters = stream.read()
+
+        self.assertIn(
+            "pair_style hybrid lj/cut/coul/long 9 9 lj/cut/coul/long 9 9",
+            parameters,
+        )
+        self.assertIn(
+            "pair_modify pair lj/cut/coul/long 1 special lj 0.0 0.0 0.5 "
+            "special coul 0.0 0.0 0.8333333333",
+            parameters,
+        )
+        self.assertIn(
+            "pair_modify pair lj/cut/coul/long 2 special lj 0.0 0.0 1 "
+            "special coul 0.0 0.0 1",
+            parameters,
+        )
+        # Eleven atom types require 11 * 12 / 2 explicit I-J assignments.
+        self.assertEqual(parameters.count("\npair_coeff "), 66)
+
+    def test_exact_combined_pdb_count_does_not_emit_false_warning(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            amber2lammps(
+                "mixed.data",
+                "mixed.parm",
+                [ETHANOL_PRMTOP, GLYCAM_PRMTOP],
+                [1, 1],
+                MIXTURE_PDB,
+                [0.0000010021786493, 0.0],
+            )
+        self.assertNotIn("but multi-mode expects", output.getvalue())
 
 
 class PdbBoxTests(ConversionTestCase):

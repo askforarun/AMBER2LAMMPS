@@ -20,9 +20,9 @@ behavior.
    improper/repeated-term placeholders, emit uniform scaling automatically, and
    reject incompatible profiles.
 2. Add redistributable GLYCAM and AMBER protein fixtures with documented
-   generation recipes and provenance.
+   generation recipes and provenance. (GLYCAM fixture added; protein pending.)
 3. Represent different GAFF2 and GLYCAM 1–4 scaling exactly in a non-covalent
-   mixed system.
+   mixed system. (Implemented experimentally with repeated hybrid instances.)
 4. Validate pure GAFF2, pure GLYCAM, pure protein, protein–ligand,
    protein–carbohydrate, GAFF2–GLYCAM, and three-family mixtures.
 5. Add explicit solvent, ions, periodic cells, and HMR variants.
@@ -33,11 +33,14 @@ behavior.
 
 ## Current branch status
 
-The converter now derives uniform SCEE/SCNB scaling from active proper
-dihedrals and writes the corresponding `special_bonds` command. A topology with
-multiple active profiles, or a mixture whose topologies require different
-profiles, is detected and rejected. Exact mixed-profile output is the next
-implementation milestone; detection alone is not support.
+The converter derives SCEE/SCNB scaling from active proper dihedrals. Uniform
+systems write one `special_bonds` command. A non-covalent mixed GAFF2/GLYCAM
+system now writes repeated `pair_style hybrid` instances with per-instance 1–4
+weights and a complete explicit I–J matrix. The first ethanol/glucose fixture
+runs in both LAMMPS and AMBER; bonded and Lennard-Jones terms agree at the
+printed precision. Reciprocal electrostatics still differ by about 0.049
+kcal/mol and must be aligned before this moves from experimental to validated.
+Mixed scaling with 12-6-4 terms remains fail-closed.
 
 ## Publication target
 
