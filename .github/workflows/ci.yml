@@ -93,11 +93,43 @@ jobs:
             git diff --check HEAD~1 HEAD
           fi
 
+  intermol:
+    name: InterMol/LAMMPS energy validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Pin InterMol so upstream changes cannot silently alter this validation.
+      - uses: actions/checkout@v4
+        with:
+          repository: shirtsgroup/InterMol
+          ref: 7125764d42f6e6c589dc2d1df71e3e812b3a7b27
+          path: intermol
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install AMBER2LAMMPS and LAMMPS
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+          sudo apt-get update
+          sudo apt-get install --yes lammps
+
+      - name: Compare fresh InterMol and AMBER2LAMMPS energies
+        run: python validation/validate_intermol.py --intermol-dir intermol --lammps "$(command -v lmp)"
+
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:
     name: CI passed
     if: always()
-    needs: [test, package, whitespace]
+    needs: [test, package, whitespace, intermol]
     runs-on: ubuntu-latest
     steps:
       - name: Require all CI jobs to succeed

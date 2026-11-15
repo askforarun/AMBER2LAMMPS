@@ -556,6 +556,11 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 
 Conversion results have been cross-checked with **InterMol**.
 
+The GitHub Actions CI regenerates both the InterMol and AMBER2LAMMPS epon outputs, runs both with
+LAMMPS in the same simulation cell, and checks each reported energy component against an explicit
+tolerance. InterMol is pinned to a tested commit so upstream changes cannot silently alter the
+validation baseline.
+
 Install InterMol: https://github.com/shirtsgroup/InterMol
 
 **Usage (InterMol):**
