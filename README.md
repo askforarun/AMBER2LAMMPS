@@ -556,29 +556,22 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 
 Conversion results have been cross-checked with **InterMol**.
 
-Install InterMol: https://github.com/shirtsgroup/InterMol
+The GitHub Actions CI regenerates both the InterMol and AMBER2LAMMPS epon outputs, runs both with
+LAMMPS in the same simulation cell, and checks each reported energy component against an explicit
+tolerance. InterMol is pinned to a tested commit so upstream changes cannot silently alter the
+validation baseline. Both converters preserve epon's raw topology charge during this comparison,
+so charge normalization cannot mask or create electrostatic differences. The nonbonded and total
+energy tolerances are `1e-4` kcal/mol; bonded tolerances are equal or tighter.
 
-**Usage (InterMol):**
-```bash
-python convert.py --amb_in epon.prmtop epon.crd --lammps --odir . --oname epon_converted
-```
-InterMol expects an AMBER coordinate file (`.crd`); `amber_to_lammps.py` uses the PDB for coordinates.
-
-**Committed validation assets:**
-- `epon_converted.input` / `epon_converted.lmp` (InterMol reference)
-- `epon_validation.input` / `epon_validation.data` / `epon_validation.parm` (AMBER2LAMMPS validation snapshot)
-
-`epon_validation.data` is an AMBER2LAMMPS-generated snapshot with box bounds aligned to the
-InterMol cell so the comparison isolates force-field conversion rather than box construction.
-
-```bash
-lmp < epon_converted.input
-lmp < epon_validation.input
-```
+The complete, runnable validation set is in
+[`validation/intermol_epon/`](validation/intermol_epon/README.md). It includes both tools' LAMMPS
+data, parameter, and input files; machine-readable expected energies and tolerances; exact pinned
+versions; commands for running the committed snapshots; and the command that regenerates the full
+comparison used by CI.
 
 **Energy Comparison Results**
 
-*Output from the committed InterMol and AMBER2LAMMPS validation assets above*
+*Output from the charge-equivalent committed validation assets*
 
 | Energy Component | InterMol | AMBER2LAMMPS | Difference |
 |------------------|----------|---------------|------------|
@@ -586,12 +579,12 @@ lmp < epon_validation.input
 | E_angle          | 6.0940384 | 6.0940126     | 0.0000258 |
 | E_dihed          | 12.475809 | 12.475827     | -0.0000180 |
 | E_impro          | 0.0000    | 0.0000        | 0.0000 |
-| E_pair           | -8.8739005 | -8.8427535    | -0.0311470 |
+| E_pair           | -8.8739005 | -8.8739003    | -0.0000002 |
 | E_vdwl           | 10.824738 | 10.824738     | 0.0000 |
-| E_coul           | 97.869973 | 97.927222     | -0.0572490 |
-| E_long           | -117.56861 | -117.59471    | 0.02610 |
+| E_coul           | 97.869973 | 97.869972     | 0.0000010 |
+| E_long           | -117.56861 | -117.56861    | 0.0000000 |
 | E_tail           | -0.0044166818 | -0.0044166819 | 0.0000000001 |
-| **PotEng**       | **12.012074** | **12.043214** | **-0.03114** |
+| **PotEng**       | **12.012074** | **12.012067** | **0.0000070** |
 
 
 ## Contributing
