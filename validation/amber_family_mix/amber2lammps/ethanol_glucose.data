@@ -1,5 +1,5 @@
 LAMMPS data file from AMBER conversion
-#Source: ../../ethanol.prmtop, glucose.prmtop, ethanol_glucose.pdb
+#Source: /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/ethanol.prmtop, /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_family_mix/source/glucose.prmtop, /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_family_mix/source/ethanol_glucose.pdb
 
 33 atoms 
 11 atom types 

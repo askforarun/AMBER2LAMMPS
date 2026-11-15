@@ -93,20 +93,12 @@ jobs:
             git diff --check HEAD~1 HEAD
           fi
 
-  intermol:
-    name: InterMol/LAMMPS energy validation
+  sander:
+    name: sander/LAMMPS energy and force validation
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
-          persist-credentials: false
-
-      # Pin InterMol so upstream changes cannot silently alter this validation.
-      - uses: actions/checkout@v4
-        with:
-          repository: shirtsgroup/InterMol
-          ref: 7125764d42f6e6c589dc2d1df71e3e812b3a7b27
-          path: intermol
           persist-credentials: false
 
       # Cache the pinned executable. The key includes the runner platform,
@@ -129,17 +121,16 @@ jobs:
           path: lammps-source
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: mamba-org/setup-micromamba@v3
         with:
-          python-version: "3.11"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-
-      - name: Install AMBER2LAMMPS
-        run: |
-          python -m pip install --upgrade pip
-          # InterMol imports six but does not declare it in its package metadata.
-          python -m pip install . six==1.17.0
+          environment-name: amber-validation
+          create-args: >-
+            python=3.12
+            ambertools=25
+            numpy
+            scipy
+            parmed
+          cache-environment: true
 
       - name: Build LAMMPS with required packages
         if: steps.cache-lammps.outputs.cache-hit != 'true'
@@ -152,14 +143,18 @@ jobs:
             -D PKG_KSPACE=on
           cmake --build lammps-build --parallel 2
 
-      - name: Compare fresh InterMol and AMBER2LAMMPS energies
-        run: python validation/validate_intermol.py --intermol-dir intermol --lammps lammps-build/lmp
+      - name: Compare fresh AMBER and AMBER2LAMMPS energies and forces
+        shell: micromamba-shell {0}
+        run: |
+          python validation/amber_family_mix/validate_sander.py \
+            --sander "$CONDA_PREFIX/bin/sander" \
+            --lammps lammps-build/lmp
 
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:
     name: CI passed
     if: always()
-    needs: [test, package, whitespace, intermol]
+    needs: [test, package, whitespace, sander]
     runs-on: ubuntu-latest
     steps:
       - name: Require all CI jobs to succeed

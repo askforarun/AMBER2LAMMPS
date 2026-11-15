@@ -7,11 +7,12 @@ import parmed as pmd
 
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+ROOT = HERE.parents[2]
+SOURCE = HERE.parent / "source"
 
 ethanol = pmd.load_file(str(ROOT / "ethanol.prmtop"))
-glucose = pmd.load_file(str(HERE / "glucose.prmtop"))
-pdb = pmd.load_file(str(HERE / "ethanol_glucose.pdb"))
+glucose = pmd.load_file(str(SOURCE / "glucose.prmtop"))
+pdb = pmd.load_file(str(SOURCE / "ethanol_glucose.pdb"))
 coordinates = pdb.coordinates
 
 system = ethanol + glucose

@@ -11,16 +11,33 @@ weights, and all 66 I–J assignments for its 11 atom types.
 Requirements: AmberTools 25 (including GLYCAM06j-1), Packmol, ParmEd, and
 LAMMPS with the KSPACE package.
 
+The files are separated by purpose:
+
+```text
+source/          GLYCAM topology/PDB, packed mixture PDB, tleap and Packmol recipes
+sander/          combined-reference builder and sander energy/force inputs
+amber2lammps/    generated LAMMPS data, parameter and run-input files
+validate_sander.py
+expected_results.json
+```
+
+Run preparation commands from the indicated directory:
+
 ```bash
+cd validation/amber_family_mix/source
 conda run -n AmberTools25 tleap -f tleap_glucose.in
 packmol < packmol.in
 python add_cryst1.py
 
-python ../../amber_to_lammps.py ethanol_glucose.data ethanol_glucose.parm \
-  ethanol_glucose.pdb \
-  -t ../../ethanol.prmtop glucose.prmtop -c 1 1 \
+cd ..
+python ../../amber_to_lammps.py \
+  amber2lammps/ethanol_glucose.data \
+  amber2lammps/ethanol_glucose.parm \
+  source/ethanol_glucose.pdb \
+  -t ../../ethanol.prmtop source/glucose.prmtop -c 1 1 \
   --charges 0.0000010021786493 0
 
+cd amber2lammps
 lmp_serial -in ethanol_glucose.input
 ```
 
@@ -32,7 +49,7 @@ both engines.
 ## Independent AMBER reference
 
 ```bash
-python build_amber_reference.py
+cd validation/amber_family_mix
 python validate_sander.py \
   --sander "$CONDA_PREFIX/bin/sander" \
   --lammps /path/to/lmp

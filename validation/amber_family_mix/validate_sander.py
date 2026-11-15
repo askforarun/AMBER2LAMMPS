@@ -13,14 +13,18 @@ from scipy.io import netcdf_file
 
 
 HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+SOURCE = HERE / "source"
+AMBER = HERE / "sander"
+LAMMPS = HERE / "amber2lammps"
 ENERGY_TOLERANCE = 5.0e-4
 FORCE_MAX_TOLERANCE = 0.1
 FORCE_RMSE_TOLERANCE = 0.02
 
 
-def run(command):
+def run(command, cwd=HERE):
     result = subprocess.run(
-        [str(item) for item in command], cwd=HERE, text=True,
+        [str(item) for item in command], cwd=cwd, text=True,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False,
     )
     if result.returncode:
@@ -74,10 +78,10 @@ def lammps_energies(output):
 
 
 def force_statistics():
-    with netcdf_file(HERE / "sander.mdfrc", "r", mmap=False) as force_file:
+    with netcdf_file(AMBER / "sander.mdfrc", "r", mmap=False) as force_file:
         amber = force_file.variables["forces"].data.copy()[0]
 
-    lines = (HERE / "lammps_forces.dump").read_text().splitlines()
+    lines = (LAMMPS / "lammps_forces.dump").read_text().splitlines()
     header = lines.index("ITEM: ATOMS id fx fy fz")
     rows = np.array([[float(value) for value in line.split()] for line in lines[header + 1:]])
     lammps = rows[np.argsort(rows[:, 0]), 1:]
@@ -92,19 +96,37 @@ def main():
     parser.add_argument("--sander", type=Path, required=True)
     parser.add_argument("--lammps", type=Path, required=True)
     args = parser.parse_args()
-    for executable in (args.sander, args.lammps):
-        if not executable.resolve().is_file():
+    sander = args.sander.absolute()
+    lammps = args.lammps.absolute()
+    for executable in (sander, lammps):
+        if not executable.is_file():
             parser.error(f"Executable not found: {executable}")
 
-    run([sys.executable, "build_amber_reference.py"])
+    sys.path.insert(0, str(ROOT))
+    import parmed as pmd
+    from amber_to_lammps import amber2lammps
+
+    ethanol_topology = ROOT / "ethanol.prmtop"
+    ethanol_charge = sum(atom.charge for atom in pmd.load_file(str(ethanol_topology)).atoms)
+    amber2lammps(
+        data_file=str(LAMMPS / "ethanol_glucose.data"),
+        param_file=str(LAMMPS / "ethanol_glucose.parm"),
+        topologies=[str(ethanol_topology), str(SOURCE / "glucose.prmtop")],
+        molecule_counts=[1, 1],
+        pdb_file=str(SOURCE / "ethanol_glucose.pdb"),
+        charges_target=[ethanol_charge, 0.0],
+    )
+    run([sys.executable, "build_amber_reference.py"], cwd=AMBER)
     run([
-        args.sander, "-O", "-i", "sander_force.in", "-o", "sander_force.out",
+        sander, "-O", "-i", "sander_force.in", "-o", "sander_force.out",
         "-p", "amber_reference.prmtop", "-c", "amber_reference.rst7",
         "-r", "sander_force.rst7", "-inf", "sander_force.mdinfo", "-frc", "sander.mdfrc",
-    ])
-    lammps_output = run([args.lammps, "-in", "ethanol_glucose.input", "-log", "none"])
+    ], cwd=AMBER)
+    lammps_output = run(
+        [lammps, "-in", "ethanol_glucose.input", "-log", "none"], cwd=LAMMPS
+    )
 
-    amber = amber_energies(HERE / "sander_force.out")
+    amber = amber_energies(AMBER / "sander_force.out")
     lammps = lammps_energies(lammps_output)
     failures = []
     print(f"{'Component':<12} {'sander':>14} {'LAMMPS':>14} {'difference':>14}")

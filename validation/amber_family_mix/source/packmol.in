@@ -4,7 +4,7 @@ seed 20261115
 output ethanol_glucose.pdb
 
 # Keep this order synchronized with converter --topologies/--counts arguments.
-structure ../../ethanol.pdb
+structure ../../../ethanol.pdb
   number 1
   inside box 2.0 2.0 2.0 18.0 18.0 18.0
 end structure

@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
-  <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 InterMol energy validation ✨</strong></p>
+  <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
   <p><strong>🤖 NEW MCP server · 🛡️ 36 automated tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
 </div>
 
@@ -16,7 +16,7 @@
 [![AMBER2LAMMPS demo: CLI, MCP server, conversion, and validation](docs/media/amber2lammps-demo.gif)](docs/media/amber2lammps-demo.mp4)
 
 Click the animated preview to open the full MP4. The demo covers PyPI installation, CLI conversion,
-the MCP server for Claude and Codex, generated LAMMPS files, and InterMol energy validation.
+the MCP server for Claude and Codex, generated LAMMPS files, and direct AMBER `sander` validation.
 
 Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter formats through CLI or Python API, featuring validation-first error handling. **Can handle multiple AMBER topology files for mixed molecular systems (e.g., drug + solvent mixtures).**
 
@@ -64,7 +64,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
   - [Python API with LAMMPS execution](#python-api-with-lammps-execution)
     - [Additional API examples](#additional-api-examples)
   - [Multiple Copies and Mixed Molecular System Workflow](#multiple-copies-and-mixed-molecular-system-workflow)
-- [Validation with InterMol](#validation-with-intermol)
+- [Validation with sander and InterMol](#validation-with-sander-and-intermol)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
@@ -606,16 +606,28 @@ amber2lammps(
 subprocess.run("lmp < test_mixed_system.in", shell=True)
 ```
 
-## Validation with InterMol
+## Validation with sander and InterMol
+
+The required GitHub Actions reference check uses AmberTools **`sander`** as the
+AMBER authority. CI regenerates the GAFF2 ethanol + GLYCAM glucose LAMMPS files,
+runs both engines on identical coordinates and a shared 30 Angstrom periodic
+cell, and compares bonded, van der Waals, electrostatic and total energies plus
+every Cartesian force component. The complete runnable fixture, expected
+results and explicit tolerances are in
+[`validation/amber_family_mix/`](validation/amber_family_mix/README.md).
+
+InterMol remains a useful secondary converter-to-converter cross-check and its
+reproducible epon bundle is retained, but it is no longer the required
+scientific reference job.
 
 Conversion results have been cross-checked with **InterMol**.
 
-The GitHub Actions CI regenerates both the InterMol and AMBER2LAMMPS epon outputs, runs both with
-LAMMPS in the same simulation cell, and checks each reported energy component against an explicit
-tolerance. InterMol is pinned to a tested commit so upstream changes cannot silently alter the
-validation baseline. Both converters preserve epon's raw topology charge during this comparison,
-so charge normalization cannot mask or create electrostatic differences. The nonbonded and total
-energy tolerances are `1e-4` kcal/mol; bonded tolerances are equal or tighter.
+The retained InterMol script regenerates both the InterMol and AMBER2LAMMPS
+epon outputs, runs both with LAMMPS in the same simulation cell, and checks each
+reported energy component against an explicit tolerance. InterMol is pinned to
+a tested commit when this optional comparison is run. Both converters preserve
+epon's raw topology charge, so charge normalization cannot mask or create
+electrostatic differences.
 
 The complete, runnable validation set is in
 [`validation/intermol_epon/`](validation/intermol_epon/README.md). It includes both tools' LAMMPS

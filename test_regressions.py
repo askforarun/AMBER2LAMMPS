@@ -17,8 +17,12 @@ from amber_to_lammps import amber2lammps
 HERE = os.path.dirname(os.path.abspath(__file__))
 ETHANOL_PRMTOP = os.path.join(HERE, "ethanol.prmtop")
 ETHANOL_PDB = os.path.join(HERE, "ethanol.pdb")
-GLYCAM_PRMTOP = os.path.join(HERE, "validation", "amber_family_mix", "glucose.prmtop")
-MIXTURE_PDB = os.path.join(HERE, "validation", "amber_family_mix", "ethanol_glucose.pdb")
+GLYCAM_PRMTOP = os.path.join(
+    HERE, "validation", "amber_family_mix", "source", "glucose.prmtop"
+)
+MIXTURE_PDB = os.path.join(
+    HERE, "validation", "amber_family_mix", "source", "ethanol_glucose.pdb"
+)
 DEBUG_FILES = ("pairs.txt", "bonds.txt", "angles.txt", "dihedrals.txt")
 
 
