@@ -2,7 +2,7 @@
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
-  <p><strong>🤖 NEW MCP server · 🛡️ 36 automated tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
+  <p><strong>🤖 NEW MCP server · 🛡️ 38 automated tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
 </div>
 
 ---
@@ -47,6 +47,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 
 ## Table of Contents
 - [Open Source](#open-source)
+- [Research scope and evidence](#research-scope-and-evidence)
 - [Citation](#citation)
 - [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
@@ -72,6 +73,23 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 
 This is an open-source project. The source code is freely available for use, modification, and
 distribution under the MIT License.
+
+## Research scope and evidence
+
+AMBER2LAMMPS targets reusable conversion of classical, fixed-charge
+AMBER-family molecular models; it is not a generic converter for unrelated
+LAMMPS potentials. The current validated reference is a heterogeneous GAFF2 +
+GLYCAM system compared directly with AmberTools `sander` for energy components
+and all Cartesian forces.
+
+- [Supported-system and validation matrix](docs/support-matrix.md)
+- [Scientific mapping and extension model](docs/scientific-design.md)
+- [Reproducible `sander` validation](validation/amber_family_mix/README.md)
+- [AMBER-family development roadmap](docs/amber-family-roadmap.md)
+- [Research-use and adoption record](docs/research-use.md)
+- [Contribution requirements](CONTRIBUTING.md)
+- [Governance and support expectations](GOVERNANCE.md)
+- [Release changelog](CHANGELOG.md)
 
 ## Citation
 
@@ -655,11 +673,10 @@ comparison used by CI.
 
 ## Contributing
 
-When making changes:
-1. Create a branch: `git checkout -b feature-name`
-2. Implement the change
-3. Test with varied inputs
-4. Commit and push
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the
+scientific evidence required for force-field or interaction changes. Project
+decisions, releases and support expectations are documented in
+[GOVERNANCE.md](GOVERNANCE.md).
 
 ## Acknowledgements
 
