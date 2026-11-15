@@ -148,6 +148,8 @@ Examples:
                         help='Cutoff in Angstrom for generated 12-6-4 hybrid/overlay pair styles (default: 9.0)')
     parser.add_argument('--c4-coulomb', choices=('long', 'cut'), default='long',
                         help='Coulomb treatment for generated 12-6-4 pair style (default: long)')
+    parser.add_argument('--typelabels', action='store_true',
+                        help='Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same.')
     
     return parser.parse_args()
 
@@ -210,10 +212,38 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
     
     atoms = []
     x, y, z = [], [], []
+    box_bounds = None
     
     with open(pdb_file) as f:
         for line in f:
-            if line.startswith('ATOM') or line.startswith('HETATM'):
+            if line.startswith('CRYST1'):
+                try:
+                    xhi = float(line[6:15].strip())
+                    yhi = float(line[15:24].strip())
+                    zhi = float(line[24:33].strip())
+                    alpha = float(line[33:40].strip())
+                    beta = float(line[40:47].strip())
+                    gamma = float(line[47:54].strip())
+                    if min(xhi, yhi, zhi) <= 0:
+                        raise ValueError("cell lengths must be positive")
+                    if not all(abs(angle - 90.0) <= 1.0e-3 for angle in (alpha, beta, gamma)):
+                        raise ValueError(
+                            "Non-orthogonal CRYST1 cells are not supported; "
+                            f"got alpha={alpha:g}, beta={beta:g}, gamma={gamma:g}"
+                        )
+                    if all(abs(length - 1.0) <= 1.0e-3 for length in (xhi, yhi, zhi)):
+                        print(
+                            "Warning: ignoring placeholder 1 x 1 x 1 Angstrom "
+                            "CRYST1 cell; using coordinate bounds and --buffer instead."
+                        )
+                        continue
+                    box_bounds = BoxBounds(0,xhi,0,yhi,0,zhi)
+                except ValueError as exc:
+                    if "Non-orthogonal CRYST1" in str(exc):
+                        raise
+                    print(f"Warning: Could not parse PDB CRYST1 record: {line.strip()} ({exc})")
+                    continue
+            elif line.startswith('ATOM') or line.startswith('HETATM'):
                 try:
                     atom_num = _parse_pdb_serial(line[6:11], fallback=len(atoms) + 1)
                     atom_name = line[12:16].strip()
@@ -247,8 +277,24 @@ def parse_pdb_coordinates(pdb_file, verbose=False):
     
     if len(atoms) == 0:
         raise ValueError(f"No atoms found in PDB file '{pdb_file}'. File may be empty or malformed.")
+
+    if box_bounds is not None:
+        cell_lengths = (box_bounds.xhi, box_bounds.yhi, box_bounds.zhi)
+        coordinate_spans = (max(x) - min(x), max(y) - min(y), max(z) - min(z))
+        axes = ("x", "y", "z")
+        too_small = [
+            f"{axis}: atom span {span:.6g} > cell length {length:.6g}"
+            for axis, span, length in zip(axes, coordinate_spans, cell_lengths)
+            if span > length + 1.0e-6
+        ]
+        if too_small:
+            raise ValueError(
+                "PDB CRYST1 cell is smaller than the coordinate span ("
+                + "; ".join(too_small)
+                + ")"
+            )
     
-    return atoms, x, y, z
+    return atoms, x, y, z, box_bounds
 
 @dataclass
 class TopologyContext:
@@ -298,6 +344,9 @@ class ConnectivityContext:
     bond_coeff_lines: list
     angle_coeff_lines: list
     dihedral_coeff_lines: list
+    bond_type_label_lines: list
+    angle_type_label_lines: list
+    dihedral_type_label_lines: list
     bond_debug: list
     angle_debug: list
     dihedral_debug: list
@@ -548,10 +597,10 @@ def compute_box_bounds(x_coords, y_coords, z_coords, buffer):
     )
 
 
-def write_data_header(data_file, expected_total_atoms, top_ctx, conn_ctx, box_bounds):
+def write_data_header(data_file, expected_total_atoms, atom_type_mapping, conn_ctx, box_bounds):
     with open(data_file, "a") as f:
         f.write(f"{expected_total_atoms} atoms \n")
-        f.write(f"{len(top_ctx.atom_type_mapping)} atom types \n")
+        f.write(f"{len(atom_type_mapping)} atom types \n")
         f.write(f"{conn_ctx.bond_count} bonds \n")
         f.write(f"{conn_ctx.bond_type_count} bond types \n")
         f.write(f"{conn_ctx.angle_count} angles \n")
@@ -560,10 +609,7 @@ def write_data_header(data_file, expected_total_atoms, top_ctx, conn_ctx, box_bo
         f.write(f"{conn_ctx.dihedral_type_count} dihedral types \n\n")
         f.write(f"{box_bounds.xlo} {box_bounds.xhi} xlo xhi \n")
         f.write(f"{box_bounds.ylo} {box_bounds.yhi} ylo yhi \n")
-        f.write(f"{box_bounds.zlo} {box_bounds.zhi} zlo zhi \n\n")
-        f.write("Masses \n\n")
-        for i in range(len(top_ctx.atom_type_mapping)):
-            f.write(f"{i+1} {top_ctx.mass_list[i]} \n")
+        f.write(f"{box_bounds.zlo} {box_bounds.zhi} zlo zhi \n")
 
 
 def build_charges(all_parms, molecule_counts, charges_target, topologies, verbose):
@@ -640,6 +686,57 @@ def build_pair_coeff_map(atom_type_mapping, nonbonded_params):
             pair_coeff_map[atom_type] = f"pair_coeff {type_id} {type_id} {lj_epsilon} {lj_sigma} # {atom_type}"
     return pair_coeff_map
 
+
+def write_masses_section(data_file, top_ctx, verbose):
+    if verbose:
+        print("Writing masses section...")
+
+    with open(data_file, "a") as f:
+        f.write("\nMasses \n\n")
+        for i in range(len(top_ctx.atom_type_mapping)):
+            f.write(f"{i+1} {top_ctx.mass_list[i]} \n")
+
+def _sanitize_type_label(label):
+    """Make an AMBER type name valid as a LAMMPS type label."""
+    sanitized = "".join("_" if char.isspace() else char for char in str(label))
+    if not sanitized:
+        sanitized = "type"
+    if sanitized[0].isdigit() or sanitized[0] in "*#":
+        sanitized = f"type_{sanitized}"
+    return sanitized
+
+
+def build_atom_type_labels(atom_type_mapping):
+    """Map canonical atom types to stable, valid, unique LAMMPS labels."""
+    labels = {}
+    used = set()
+    for atom_type in atom_type_mapping:
+        labels[atom_type] = _unique_type_label(_sanitize_type_label(atom_type), used)
+    return labels
+
+
+def write_atom_type_labels_section(data_file, atom_type_mapping, atom_type_labels, verbose):
+    if verbose:
+        print("Writing atom labels section...")
+
+    with open(data_file, "a") as flammps:
+        flammps.write("\nAtom Type Labels\n\n")
+
+        for atom_type in atom_type_mapping.keys():
+            type_id = atom_type_mapping[atom_type]
+            flammps.write(f"{type_id} {atom_type_labels[atom_type]}\n")
+
+def write_connectivity_labels_section(data_file, conn_ctx, verbose):
+    if verbose:
+        print("Writing connectivity type labels section...")
+
+    with open(data_file, "a") as flammps:
+        flammps.write("\nBond Type Labels\n\n")
+        flammps.write("\n".join(conn_ctx.bond_type_label_lines) + "\n")
+        flammps.write("\nAngle Type Labels\n\n")
+        flammps.write("\n".join(conn_ctx.angle_type_label_lines) + "\n")
+        flammps.write("\nDihedral Type Labels\n\n")
+        flammps.write("\n".join(conn_ctx.dihedral_type_label_lines) + "\n")
 
 def _ab_to_epsilon_sigma(acoef, bcoef):
     if acoef <= 0.0 or bcoef <= 0.0:
@@ -722,13 +819,31 @@ def write_atoms_section(data_file, pdb_atoms, molecule_spans, all_parms, type_re
             )
 
 
-def process_connectivity(all_parms, molecule_counts, topologies):
+def _unique_type_label(base, used_labels):
+    """Return a stable unique LAMMPS label without merging parameter conflicts."""
+    label = base
+    suffix = 2
+    while label in used_labels:
+        label = f"{base}_{suffix}"
+        suffix += 1
+    used_labels.add(label)
+    return label
+
+
+def process_connectivity(all_parms, molecule_counts, topologies, use_typelabels,
+                         type_remaps=None, atom_type_labels=None):
     bond_type_registry = {}
     angle_type_registry = {}
     dihedral_type_registry = {}
     bond_coeff_lines = []
     angle_coeff_lines = []
     dihedral_coeff_lines = []
+    bond_type_label_lines = []
+    angle_type_label_lines = []
+    dihedral_type_label_lines = []
+    used_bond_labels = set()
+    used_angle_labels = set()
+    used_dihedral_labels = set()
     bond_type_ids_per_topo = []
     angle_type_ids_per_topo = []
     dih_entries_per_topo = []
@@ -744,6 +859,12 @@ def process_connectivity(all_parms, molecule_counts, topologies):
             result.append((round(phi_k, 4), per, round(phase, 4)))
         return tuple(sorted(result))
 
+    def labelled_atom_type(topo_idx, atom):
+        if type_remaps is None:
+            return _sanitize_type_label(atom.type)
+        canonical = type_remaps[topo_idx][atom.idx]
+        return atom_type_labels[canonical]
+
     for topo_idx, parm in enumerate(all_parms):
         bond_type_ids = []
         for bond in parm.bonds:
@@ -751,13 +872,21 @@ def process_connectivity(all_parms, molecule_counts, topologies):
                 raise ValueError(f"Bond parameters missing for atoms {bond.atom1.idx}-{bond.atom2.idx} in topology {topo_idx+1}")
             k = float(bond.type.k)
             req = float(bond.type.req)
-            sig = (round(k, 6), round(req, 6))
+            display_key = (bond.atom1.type, bond.atom2.type)
+            type_key = tuple(labelled_atom_type(topo_idx, atom) for atom in (bond.atom1, bond.atom2)) if use_typelabels else display_key
+            if type_key[0] > type_key[1]:
+                type_key = tuple(reversed(type_key))
+            param_sig = (round(k, 6), round(req, 6))
+            sig = (type_key, param_sig) if use_typelabels else param_sig
             if sig not in bond_type_registry:
                 type_id = len(bond_type_registry) + 1
                 bond_type_registry[sig] = type_id
+                comment_key = type_key if use_typelabels else display_key
                 bond_coeff_lines.append(
-                    f"bond_coeff {type_id} {k:.4f} {req:.4f}  # {bond.atom1.type}-{bond.atom2.type}"
+                    f"bond_coeff {type_id} {k:.4f} {req:.4f}  # {'-'.join(comment_key)}"
                 )
+                label = _unique_type_label("-".join(type_key), used_bond_labels)
+                bond_type_label_lines.append(f"{type_id} {label}")
             bond_type_ids.append(bond_type_registry[sig])
         bond_type_ids_per_topo.append(bond_type_ids)
 
@@ -769,13 +898,21 @@ def process_connectivity(all_parms, molecule_counts, topologies):
                 )
             k = float(angle.type.k)
             theteq = float(angle.type.theteq)
-            sig = (round(k, 6), round(theteq, 6))
+            display_key = (angle.atom1.type, angle.atom2.type, angle.atom3.type)
+            type_key = tuple(labelled_atom_type(topo_idx, atom) for atom in (angle.atom1, angle.atom2, angle.atom3)) if use_typelabels else display_key
+            if type_key[0] > type_key[2]:
+                type_key = tuple(reversed(type_key))
+            param_sig = (round(k, 6), round(theteq, 6))
+            sig = (type_key, param_sig) if use_typelabels else param_sig
             if sig not in angle_type_registry:
                 type_id = len(angle_type_registry) + 1
                 angle_type_registry[sig] = type_id
+                comment_key = type_key if use_typelabels else display_key
                 angle_coeff_lines.append(
-                    f"angle_coeff {type_id} {k:.4f} {theteq:.4f}  # {angle.atom1.type}-{angle.atom2.type}-{angle.atom3.type}"
+                    f"angle_coeff {type_id} {k:.4f} {theteq:.4f}  # {'-'.join(comment_key)}"
                 )
+                label = _unique_type_label("-".join(type_key), used_angle_labels)
+                angle_type_label_lines.append(f"{type_id} {label}")
             angle_type_ids.append(angle_type_registry[sig])
         angle_type_ids_per_topo.append(angle_type_ids)
 
@@ -799,14 +936,25 @@ def process_connectivity(all_parms, molecule_counts, topologies):
         dih_entries = []
         for idx_key, terms in dih_by_idx.items():
             dih = dih_first[idx_key]
-            sig = dihedral_signature(terms)
+            sig_terms = dihedral_signature(terms)
+            display_key = (dih.atom1.type, dih.atom2.type, dih.atom3.type, dih.atom4.type)
+            type_key = tuple(
+                labelled_atom_type(topo_idx, atom)
+                for atom in (dih.atom1, dih.atom2, dih.atom3, dih.atom4)
+            ) if use_typelabels else display_key
+            if type_key[0] > type_key[3] or (type_key[0] == type_key[3] and type_key[1] > type_key[2]):
+                type_key = tuple(reversed(type_key))
+            sig = (type_key, sig_terms) if use_typelabels else sig_terms
             if sig not in dihedral_type_registry:
                 type_id = len(dihedral_type_registry) + 1
                 dihedral_type_registry[sig] = type_id
-                coeff_str = " ".join(f"{phi_k:.4f} {per} {phase:.4f}" for phi_k, per, phase in sig)
+                coeff_str = " ".join(f"{phi_k:.4f} {per} {phase:.4f}" for phi_k, per, phase in sig_terms)
+                comment_key = type_key if use_typelabels else display_key
                 dihedral_coeff_lines.append(
-                    f"dihedral_coeff {type_id} {len(sig)} {coeff_str}  # {dih.atom1.type}-{dih.atom2.type}-{dih.atom3.type}-{dih.atom4.type}"
+                    f"dihedral_coeff {type_id} {len(sig_terms)} {coeff_str}  # {'-'.join(comment_key)}"
                 )
+                label = _unique_type_label("-".join(type_key), used_dihedral_labels)
+                dihedral_type_label_lines.append(f"{type_id} {label}")
             dih_entries.append((dihedral_type_registry[sig], dih))
         dih_entries_per_topo.append(dih_entries)
 
@@ -881,6 +1029,9 @@ def process_connectivity(all_parms, molecule_counts, topologies):
         bond_coeff_lines=bond_coeff_lines,
         angle_coeff_lines=angle_coeff_lines,
         dihedral_coeff_lines=dihedral_coeff_lines,
+        bond_type_label_lines=bond_type_label_lines,
+        angle_type_label_lines=angle_type_label_lines,
+        dihedral_type_label_lines=dihedral_type_label_lines,
         bond_debug=bond_debug,
         angle_debug=angle_debug,
         dihedral_debug=dihedral_debug,
@@ -998,7 +1149,7 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
 
 
 def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target,
-                 buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long"):
+                 buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long", use_typelabels=False):
     amber_parm_cls = pmd.amber.AmberParm
     print_details = pmd.tools.actions.printDetails
 
@@ -1013,7 +1164,7 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         for i, (topo, count) in enumerate(zip(topologies, molecule_counts)):
             print(f"  Topology {i+1}: {topo} ({count} molecules)")
 
-    pdb_atoms, x_coords, y_coords, z_coords = parse_pdb_coordinates(pdb_file, verbose)
+    pdb_atoms, x_coords, y_coords, z_coords, box_bounds = parse_pdb_coordinates(pdb_file, verbose)
     top_ctx = load_topology_context(topologies, verbose, amber_parm_cls, print_details)
     initialize_output_files(data_file, param_file, topologies, pdb_file)
 
@@ -1027,7 +1178,8 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         verbose=verbose,
     )
 
-    box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
+    if not box_bounds:
+        box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
     if verbose:
         print(
             f"Box dimensions: X[{box_bounds.xlo:.3f}, {box_bounds.xhi:.3f}], "
@@ -1035,14 +1187,42 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
             f"Z[{box_bounds.zlo:.3f}, {box_bounds.zhi:.3f}]"
         )
 
-    conn_ctx = process_connectivity(top_ctx.all_parms, molecule_counts, topologies)
+    atom_type_labels = build_atom_type_labels(top_ctx.atom_type_mapping) if use_typelabels else None
+    conn_ctx = process_connectivity(
+        top_ctx.all_parms,
+        molecule_counts,
+        topologies,
+        use_typelabels,
+        type_remaps=top_ctx.type_remaps,
+        atom_type_labels=atom_type_labels,
+    )
 
     write_data_header(
         data_file=data_file,
         expected_total_atoms=expected_total_atoms,
-        top_ctx=top_ctx,
+        atom_type_mapping=top_ctx.atom_type_mapping,
         conn_ctx=conn_ctx,
         box_bounds=box_bounds,
+    )
+
+    if use_typelabels:
+        write_atom_type_labels_section(
+            data_file=data_file,
+            atom_type_mapping=top_ctx.atom_type_mapping,
+            atom_type_labels=atom_type_labels,
+            verbose=verbose,
+        )
+
+        write_connectivity_labels_section(
+            data_file=data_file,
+            conn_ctx=conn_ctx,
+            verbose=verbose,
+        )
+
+    write_masses_section(
+        data_file=data_file,
+        top_ctx=top_ctx,
+        verbose=verbose,
     )
 
     charges = build_charges(top_ctx.all_parms, molecule_counts, charges_target, topologies, verbose)
@@ -1117,6 +1297,7 @@ def main():
             keep_temp=args.keep_temp,
             c4_cutoff=args.c4_cutoff,
             c4_coulomb=args.c4_coulomb,
+            use_typelabels=args.typelabels,
         )
         print(f"✓ Conversion completed successfully!")
         print(f"Output files: {args.data_file}, {args.param_file}")

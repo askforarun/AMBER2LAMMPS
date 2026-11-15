@@ -109,10 +109,20 @@ jobs:
           path: intermol
           persist-credentials: false
 
+      # Cache the pinned executable. The key includes the runner platform,
+      # source commit, compiler family, enabled packages, and a format version.
+      - name: Restore pinned LAMMPS build
+        id: cache-lammps
+        uses: actions/cache@v4
+        with:
+          path: lammps-build/lmp
+          key: lammps-${{ runner.os }}-${{ runner.arch }}-ubuntu24-gcc-26e5f79-molecule-extra_molecule-kspace-v1
+
       # Ubuntu's LAMMPS package omits EXTRA-MOLECULE, which provides the
-      # Fourier dihedral style emitted by AMBER2LAMMPS. Build the same stable
-      # LAMMPS release used for local validation with the required packages.
+      # Fourier dihedral style emitted by AMBER2LAMMPS. On a cache miss, build
+      # the same stable release used for local validation.
       - uses: actions/checkout@v4
+        if: steps.cache-lammps.outputs.cache-hit != 'true'
         with:
           repository: lammps/lammps
           ref: 26e5f79b4e5aa77b65fc4fbf314b206bf0530b45
@@ -132,6 +142,7 @@ jobs:
           python -m pip install . six==1.17.0
 
       - name: Build LAMMPS with required packages
+        if: steps.cache-lammps.outputs.cache-hit != 'true'
         run: |
           cmake -S lammps-source/cmake -B lammps-build \
             -D CMAKE_BUILD_TYPE=Release \
