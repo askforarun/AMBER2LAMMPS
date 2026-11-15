@@ -1,5 +1,7 @@
 # Overview
 
+![AMBER2LAMMPS converts AMBER prmtop and PDB inputs into LAMMPS data and parameter files](6ce0db32-87a0-4a12-ab3d-44768ded7021.png)
+
 Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter formats through CLI or Python API, featuring validation-first error handling. **Can handle multiple AMBER topology files for mixed molecular systems (e.g., drug + solvent mixtures).**
 
 ## Key Features
