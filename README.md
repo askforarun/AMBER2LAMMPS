@@ -70,7 +70,7 @@ Tested and validated on:
 
 - **Structure input**: A PDB file of the molecular structure (or a SMILES string that you convert to PDB; see workflow below). For mixed systems, use a combined PDB file from PACKMOL containing all molecules.
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`. For mixed systems, generate separate `.prmtop` files for each molecule type.
-- **Python**: Python 3.8+ with `parmed` and `numpy`.
+- **Python**: Python 3.9+ with `parmed` and `numpy`.
 - **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
