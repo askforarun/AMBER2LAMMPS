@@ -30,6 +30,82 @@ class UnsupportedNonbondedError(ValueError):
     """Raised when pair-specific parameters cannot be combined safely."""
 
 
+class UnsupportedScalingError(ValueError):
+    """Raised when AMBER 1-4 scaling cannot be represented exactly."""
+
+
+@dataclass(frozen=True)
+class SpecialBondScaling:
+    """AMBER divisors and their equivalent LAMMPS 1-4 weights."""
+
+    scee: float
+    scnb: float
+
+    @property
+    def coulomb_weight(self):
+        return 1.0 / self.scee
+
+    @property
+    def lj_weight(self):
+        return 1.0 / self.scnb
+
+
+def topology_14_scaling(parm, topology_name="topology"):
+    """Return the unique active proper-dihedral SCEE/SCNB profile.
+
+    AMBER stores zero scaling placeholders for some impropers and repeated
+    torsion terms. Only proper dihedrals that own their end-to-end interaction
+    (``ignore_end`` is false) determine the LAMMPS 1-4 weights.
+    """
+    profiles = set()
+    for dihedral in parm.dihedrals:
+        if dihedral.improper or dihedral.ignore_end:
+            continue
+        terms = dihedral.type if isinstance(dihedral.type, (list, tuple)) else [dihedral.type]
+        for term in terms:
+            if term is None:
+                continue
+            scee = float(term.scee)
+            scnb = float(term.scnb)
+            if scee <= 0.0 or scnb <= 0.0:
+                raise UnsupportedScalingError(
+                    f"{topology_name} has non-positive SCEE/SCNB values on an active "
+                    f"proper dihedral: SCEE={scee:g}, SCNB={scnb:g}."
+                )
+            profiles.add((round(scee, 10), round(scnb, 10)))
+
+    if not profiles:
+        return None
+    if len(profiles) != 1:
+        details = ", ".join(f"SCEE={scee:g}/SCNB={scnb:g}" for scee, scnb in sorted(profiles))
+        raise UnsupportedScalingError(
+            f"{topology_name} uses multiple active 1-4 scaling profiles ({details}); "
+            "one global LAMMPS special_bonds setting cannot represent them exactly."
+        )
+    scee, scnb = next(iter(profiles))
+    return SpecialBondScaling(scee=scee, scnb=scnb)
+
+
+def resolve_system_14_scaling(profiles, topologies):
+    """Return a common profile or fail closed on mixed AMBER-family scaling."""
+    used = {}
+    for topology, profile in zip(topologies, profiles):
+        if profile is not None:
+            used.setdefault(profile, []).append(topology)
+    if len(used) <= 1:
+        return next(iter(used), None)
+
+    details = "; ".join(
+        f"SCEE={profile.scee:g}/SCNB={profile.scnb:g}: {', '.join(names)}"
+        for profile, names in used.items()
+    )
+    raise UnsupportedScalingError(
+        "The input topologies use different AMBER 1-4 scaling profiles. "
+        f"Current LAMMPS output has one global special_bonds setting ({details}). "
+        "Mixed GAFF2/GLYCAM-style scaling is detected but not yet representable exactly."
+    )
+
+
 def _amber_lj_pair(parm, type_i, type_j):
     """Return the raw (A, B) coefficients for two zero-based AMBER LJ types."""
     ntypes = parm.ptr("ntypes")
@@ -309,6 +385,8 @@ class TopologyContext:
     raw_pair_params: dict
     has_pair_specific_terms: bool
     has_c4: bool
+    scaling_profiles: list
+    system_14_scaling: object
 
 
 @dataclass
@@ -412,12 +490,14 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
     has_c4 = False
     param_tol = 1e-6
     variants_by_amber_type = {}
+    scaling_profiles = []
 
     for i, topology in enumerate(topologies):
         if verbose:
             print(f"Loading topology {i+1}: {topology}")
 
         parm = amber_parm_cls(topology)
+        scaling_profiles.append(topology_14_scaling(parm, topology))
         pair_specific = find_pair_specific_nonbonded_terms(parm)
         has_c4 = has_c4 or any("C4" in item for item in pair_specific)
         has_pair_specific_terms = has_pair_specific_terms or bool(pair_specific)
@@ -542,8 +622,17 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
                     )
                 raw_pair_params[key] = value
 
+    system_14_scaling = resolve_system_14_scaling(scaling_profiles, topologies)
+
     if verbose:
         print(f"Found {len(atom_type_mapping)} unique atom types")
+        if system_14_scaling is not None:
+            print(
+                "AMBER 1-4 scaling: "
+                f"SCEE={system_14_scaling.scee:g}, SCNB={system_14_scaling.scnb:g} "
+                f"(LAMMPS Coulomb={system_14_scaling.coulomb_weight:.10g}, "
+                f"LJ={system_14_scaling.lj_weight:.10g})"
+            )
 
     return TopologyContext(
         all_parms=all_parms,
@@ -557,6 +646,8 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         raw_pair_params=raw_pair_params,
         has_pair_specific_terms=has_pair_specific_terms,
         has_c4=has_c4,
+        scaling_profiles=scaling_profiles,
+        system_14_scaling=system_14_scaling,
     )
 
 
@@ -1121,6 +1212,14 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
                          top_ctx, c4_cutoff, c4_coulomb):
     printed_pair_types = set()
     with open(param_file, "a") as flammpsparm:
+        if top_ctx.system_14_scaling is not None:
+            scaling = top_ctx.system_14_scaling
+            flammpsparm.write("# AMBER 1-4 nonbonded scaling read from the topology\n")
+            flammpsparm.write(
+                "special_bonds "
+                f"lj 0.0 0.0 {scaling.lj_weight:.10g} "
+                f"coul 0.0 0.0 {scaling.coulomb_weight:.10g}\n"
+            )
         if top_ctx.has_pair_specific_terms:
             flammpsparm.write("\n# Explicit AMBER nonbonded I-J coefficient matrix\n")
             flammpsparm.write("\n".join(build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb)) + "\n")

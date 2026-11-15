@@ -93,6 +93,39 @@ class McpConversionTests(ConversionTestCase):
         self.assertFalse(os.path.exists("mcp.data"))
 
 
+class AmberFamilyScalingTests(ConversionTestCase):
+    """AMBER SCEE/SCNB values are detected and translated fail-closed."""
+
+    def test_standard_amber_scaling_is_read_from_active_dihedrals(self):
+        parm = pmd.load_file(ETHANOL_PRMTOP)
+        scaling = a2l.topology_14_scaling(parm, "ethanol")
+        self.assertEqual(scaling, a2l.SpecialBondScaling(scee=1.2, scnb=2.0))
+        self.assertAlmostEqual(scaling.coulomb_weight, 1.0 / 1.2)
+        self.assertAlmostEqual(scaling.lj_weight, 0.5)
+
+    def test_improper_zero_placeholders_do_not_define_scaling(self):
+        parm = pmd.load_file(os.path.join(HERE, "epon.prmtop"))
+        scaling = a2l.topology_14_scaling(parm, "epon")
+        self.assertEqual(scaling, a2l.SpecialBondScaling(scee=1.2, scnb=2.0))
+
+    def test_mixed_gaff_and_glycam_style_scaling_fails_closed(self):
+        profiles = [
+            a2l.SpecialBondScaling(scee=1.2, scnb=2.0),
+            a2l.SpecialBondScaling(scee=1.0, scnb=1.0),
+        ]
+        with self.assertRaisesRegex(a2l.UnsupportedScalingError, "GAFF2/GLYCAM"):
+            a2l.resolve_system_14_scaling(profiles, ["ligand.prmtop", "sugar.prmtop"])
+
+    def test_parameter_file_emits_topology_derived_special_bonds(self):
+        self.convert()
+        with open("out.parm") as stream:
+            parameters = stream.read()
+        self.assertIn(
+            "special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333",
+            parameters,
+        )
+
+
 class PdbBoxTests(ConversionTestCase):
     """CRYST1 bounds are used safely, with coordinate bounds as the fallback."""
 
