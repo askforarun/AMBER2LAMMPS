@@ -9,6 +9,7 @@ import io
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -30,10 +31,14 @@ _ALLOWED_PAIR_STYLES = frozenset({
     "hybrid", "hybrid/overlay", "lepton", "lj/cut/coul/cut",
     "lj/cut/coul/long",
 })
+_SAFE_OUTPUT_PATH = re.compile(r"[A-Za-z0-9._/-]+\Z")
+_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[Ee][-+]?\d+)?"
 
 
 def _resolve_output(path: str, root: str) -> str:
     """Resolve an MCP output beneath its configured workspace."""
+    if not isinstance(path, str) or not path:
+        raise ValueError("Output paths must be non-empty strings.")
     root = os.path.realpath(root)
     candidate = path if os.path.isabs(path) else os.path.join(root, path)
     candidate = os.path.realpath(candidate)
@@ -45,6 +50,11 @@ def _resolve_output(path: str, root: str) -> str:
         raise ValueError(
             f"Output path '{path}' is outside the MCP workspace '{root}'. "
             "Set AMBER2LAMMPS_MCP_ROOT when starting the server to choose another workspace."
+        )
+    relative = os.path.relpath(candidate, root)
+    if not _SAFE_OUTPUT_PATH.fullmatch(relative):
+        raise ValueError(
+            f"Unsafe output path '{path}'; use only ASCII letters, digits, '.', '_', '-', and '/'."
         )
     return candidate
 
@@ -223,8 +233,9 @@ def _validate_parameter_include(path: str) -> None:
                     f"Unsafe substitution or shell metacharacter in parameter file "
                     f"at line {number}."
                 )
+            content = line.split("#", 1)[0].strip()
             if command == "pair_style":
-                tokens = line.split("#", 1)[0].split()[1:]
+                tokens = content.split()[1:]
                 invalid = []
                 for token in tokens:
                     if token in _ALLOWED_PAIR_STYLES:
@@ -238,6 +249,32 @@ def _validate_parameter_include(path: str) -> None:
                         f"Unsafe or unsupported LAMMPS pair style in parameter file "
                         f"at line {number}: {invalid[0]}"
                     )
+            elif command == "special_bonds":
+                if not re.fullmatch(
+                    rf"special_bonds lj {_NUMBER} {_NUMBER} {_NUMBER} "
+                    rf"coul {_NUMBER} {_NUMBER} {_NUMBER}", content,
+                ):
+                    raise ValueError(
+                        f"Unsupported special_bonds arguments in parameter file "
+                        f"at line {number}."
+                    )
+            elif command == "pair_modify":
+                patterns = (
+                    r"pair_modify mix arithmetic",
+                    r"pair_modify tail (?:yes|no)",
+                    rf"pair_modify pair lepton special lj {_NUMBER} {_NUMBER} {_NUMBER}",
+                    rf"pair_modify pair (?:lj/cut/coul/long|lj/cut/coul/cut) \d+ "
+                    rf"special lj {_NUMBER} {_NUMBER} {_NUMBER} "
+                    rf"special coul {_NUMBER} {_NUMBER} {_NUMBER}",
+                )
+                if not any(re.fullmatch(pattern, content) for pattern in patterns):
+                    raise ValueError(
+                        f"Unsupported pair_modify arguments in parameter file at line {number}."
+                    )
+            elif '"""' in content or "'''" in content:
+                raise ValueError(
+                    f"Unsupported quoted argument in parameter file at line {number}."
+                )
 
 
 def _validated_lammps_contract(record: Dict[str, Any]) -> Dict[str, Any]:

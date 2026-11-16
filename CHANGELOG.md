@@ -44,7 +44,10 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 - Scientific CI validations now run as independent fail-fast steps, and the
   protein-ligand tleap recipe is tracked in the repository.
 - MCP `run 0` validation serializes workspace access, validates provenance
-  fields, and rejects executable or unapproved parameter-file commands.
+  fields, restricts output-path characters, and rejects executable commands,
+  unapproved pair styles, or non-generated nonbonded-control arguments.
+- Removed machine-specific absolute paths from generated data and parameter
+  comments, and report unsupported 10-12 H-bond diagonals explicitly.
 - Removed a false warning for correctly sized combined PDB files.
 - Corrected the GLYCAM reducing-end fixture so its cap is covalently bonded.
 

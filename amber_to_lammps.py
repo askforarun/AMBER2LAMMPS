@@ -423,7 +423,8 @@ def detect_multi_mode(topologies, molecule_counts, pdb_file, verbose):
 def initialize_output_files(data_file, param_file, topologies, pdb_file):
     with open(data_file, "w") as f:
         f.write("LAMMPS data file from AMBER conversion\n")
-        f.write(f"#Source: {', '.join(topologies)}, {pdb_file}\n\n")
+        sources = [os.path.basename(path) for path in [*topologies, pdb_file]]
+        f.write(f"#Source: {', '.join(sources)}\n\n")
 
     with open(param_file, "w") as f:
         f.write("# Force field parameters generated from AMBER topologies\n\n")
@@ -473,7 +474,11 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
             atom_mass = float(atom.mass)
             diagonal = _amber_lj_pair(parm, atom.nb_idx - 1, atom.nb_idx - 1)
             if diagonal is None:
-                continue
+                raise UnsupportedNonbondedError(
+                    f"Atom {atom_index + 1} (type {atom_type}) in topology {i+1} "
+                    "uses a missing or 10-12 H-bond nonbonded diagonal; only "
+                    "12-6 Lennard-Jones atom types are supported."
+                )
             lj_depth_amber, lj_sigma = _ab_to_epsilon_sigma(*diagonal)
 
             # One LAMMPS type per distinct (AMBER type, LJ, mass) combination.
@@ -1289,7 +1294,9 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
                 "pair_modify mix arithmetic\n"
             )
             for topo_idx, topo_name in enumerate(topologies):
-                flammpsparm.write(f"\n# Topology {topo_idx+1}: {topo_name}\n")
+                flammpsparm.write(
+                    f"\n# Topology {topo_idx+1}: {os.path.basename(topo_name)}\n"
+                )
                 flammpsparm.write("# Nonbonded\n")
                 for atom_type in sorted(atom_types_per_topology[topo_idx]):
                     line = pair_coeff_map.get(atom_type)

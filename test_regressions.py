@@ -144,6 +144,24 @@ class McpConversionTests(ConversionTestCase):
                 parameter_file="safe.parm",
             )
 
+    def test_mcp_rejects_lammps_command_in_output_names(self):
+        common = dict(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], output_root=self.tmp,
+        )
+        with self.assertRaisesRegex(ValueError, "Unsafe output path"):
+            a2l_mcp.convert_amber_system(
+                **common, data_file="safe.data",
+                parameter_file="x\nshell touch PWNED_A\nquit",
+            )
+        with self.assertRaisesRegex(ValueError, "Unsafe output path"):
+            a2l_mcp.convert_amber_system(
+                **common, data_file="d\nshell touch PWNED_B\nquit\n.data",
+                parameter_file="safe.parm",
+            )
+        self.assertFalse(os.path.exists("PWNED_A"))
+        self.assertFalse(os.path.exists("PWNED_B"))
+
     def test_mcp_requires_explicit_overwrite(self):
         first = dict(
             pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
@@ -241,6 +259,24 @@ class McpConversionTests(ConversionTestCase):
         with self.assertRaisesRegex(ValueError, "unsupported LAMMPS pair style"):
             a2l_mcp._check_lammps_run0(provenance_file)
 
+    def test_run0_rejects_non_generated_pair_modify_arguments(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="modify.data", parameter_file="modify.parm",
+        )
+        with open("modify.parm", "a", encoding="utf-8") as stream:
+            stream.write("pair_modify compute no\n")
+        provenance_file = result["files"]["provenance"]
+        with open(provenance_file, encoding="utf-8") as stream:
+            record = json.load(stream)
+        record["outputs"]["lammps_parameters"]["sha256"] = (
+            a2l_provenance.sha256_file("modify.parm")
+        )
+        with open(provenance_file, "w", encoding="utf-8") as stream:
+            json.dump(record, stream)
+        with self.assertRaisesRegex(ValueError, "pair_modify arguments"):
+            a2l_mcp._check_lammps_run0(provenance_file)
+
     def test_run0_rejects_untrusted_provenance_contract(self):
         result = a2l_mcp.convert_amber_system(
             pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
@@ -255,6 +291,31 @@ class McpConversionTests(ConversionTestCase):
         with self.assertRaisesRegex(ValueError, "atom_style 'full'"):
             a2l_mcp._check_lammps_run0(provenance_file)
         self.assertFalse(os.path.exists("injected"))
+
+    def test_run0_rechecks_output_paths_loaded_from_provenance(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="paths.data", parameter_file="paths.parm",
+        )
+        provenance_file = result["files"]["provenance"]
+        with open(provenance_file, encoding="utf-8") as stream:
+            record = json.load(stream)
+        record["outputs"]["lammps_parameters"]["path"] = (
+            "paths.parm\nshell touch provenance-path-injected\nquit"
+        )
+        with open(provenance_file, "w", encoding="utf-8") as stream:
+            json.dump(record, stream)
+        with self.assertRaisesRegex(ValueError, "Unsafe output path"):
+            a2l_mcp._check_lammps_run0(provenance_file)
+        self.assertFalse(os.path.exists("provenance-path-injected"))
+
+    def test_generated_mixed_scaling_include_passes_command_validation(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=MIXTURE_PDB,
+            topologies=[ETHANOL_PRMTOP, GLYCAM_PRMTOP], counts=[1, 1],
+            charges=[0, 0], data_file="mixed.data", parameter_file="mixed.parm",
+        )
+        a2l_mcp._validate_parameter_include(result["files"]["parameters"])
 
     def test_provenance_source_control_rejects_enclosing_repository(self):
         completed = types.SimpleNamespace(stdout="/unrelated/project\n")
@@ -720,6 +781,16 @@ class UnknownAtomTypeTests(unittest.TestCase):
         canonical = context.type_remaps[0][0]
         self.assertEqual(context.nonbonded_params[canonical]["lj_epsilon"], expected_epsilon)
         self.assertEqual(context.nonbonded_params[canonical]["lj_sigma"], expected_sigma)
+
+    def test_10_12_or_missing_nonbonded_diagonal_has_specific_error(self):
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        lj_index = parm.atoms[0].nb_idx - 1
+        ntypes = parm.ptr("ntypes")
+        parm.parm_data["NONBONDED_PARM_INDEX"][ntypes * lj_index + lj_index] = 0
+        with self.assertRaisesRegex(a2l.UnsupportedNonbondedError, "10-12 H-bond"):
+            a2l.load_topology_context(
+                [ETHANOL_PRMTOP], False, lambda ignored: parm, None
+            )
 
     def test_unmapped_atom_raises_when_writing_atoms(self):
         parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)

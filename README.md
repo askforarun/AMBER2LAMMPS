@@ -184,7 +184,9 @@ existing files are refused unless the tool call explicitly sets `overwrite=true`
 writes a versioned `<data-stem>.provenance.json` record. Conversion and validation calls are
 serialized so concurrent requests cannot mix messages or overwrite one another. These defaults let
 an AI client convert and validate a system without loading large topology, data, or log files into
-its context.
+its context. Output names use the restricted character set `A-Z`, `a-z`, `0-9`, `.`, `_`, `-`, and
+`/`; this prevents paths from introducing commands into generated LAMMPS input. Because validation
+shares the conversion lock, a long `run 0` temporarily queues other MCP conversions.
 
 ### Reproducible provenance
 

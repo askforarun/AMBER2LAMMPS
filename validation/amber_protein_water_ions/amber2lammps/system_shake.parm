@@ -6,7 +6,7 @@ special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333
 # AMBER uses Lorentz-Berthelot mixing
 pair_modify mix arithmetic
 
-# Topology 1: /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_protein_water_ions/source/system.prmtop
+# Topology 1: system.prmtop
 # Nonbonded
 pair_coeff 3 3 0.08600000012835884 3.399669507944831 # C
 pair_coeff 2 2 0.10939999991572773 3.399669508450741 # CT
