@@ -160,18 +160,34 @@ jobs:
             -D PKG_RIGID=on
           cmake --build lammps-build --parallel 2
 
-      - name: Compare fresh AMBER and AMBER2LAMMPS energies and forces
+      - name: Validate GAFF2 and GLYCAM mixture
         shell: micromamba-shell {0}
         run: |
+          set -euo pipefail
           python validation/amber_family_mix/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
+
+      - name: Validate standalone GLYCAM
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
           python validation/glycam_glucose/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
+
+      - name: Validate protein and GAFF2 ligand
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
           python validation/protein_ligand/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
+
+      - name: Validate protein, water, and ions
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
           python validation/amber_protein_water_ions/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
@@ -179,6 +195,7 @@ jobs:
       - name: Exercise compact MCP LAMMPS validation
         shell: micromamba-shell {0}
         run: |
+          set -euo pipefail
           python - <<'PY'
           import os
           import tempfile

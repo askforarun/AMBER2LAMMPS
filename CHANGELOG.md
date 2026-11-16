@@ -32,6 +32,8 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ### Changed
 
+- Nonbonded epsilon and sigma values now derive from the full-precision AMBER
+  A/B coefficient arrays instead of four-decimal formatted diagnostic text.
 - Atom types with otherwise identical parameters are separated when their
   topology-specific 1-4 scaling profiles differ.
 - InterMol validation is retained as an optional secondary cross-check;
@@ -39,6 +41,10 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ### Fixed
 
+- Scientific CI validations now run as independent fail-fast steps, and the
+  protein-ligand tleap recipe is tracked in the repository.
+- MCP `run 0` validation serializes workspace access, validates provenance
+  fields, and rejects executable or unapproved parameter-file commands.
 - Removed a false warning for correctly sized combined PDB files.
 - Corrected the GLYCAM reducing-end fixture so its cap is covalently bonded.
 

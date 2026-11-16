@@ -17,6 +17,7 @@ dihedrals.txt
 *.mol2
 *.frcmod
 tleap.in
+!validation/protein_ligand/tleap.in
 sqm.in
 sqm.out
 sqm.dens

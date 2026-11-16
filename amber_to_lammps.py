@@ -465,26 +465,16 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         if verbose:
             print(f"  Found {len(parm.atoms)} atoms, {len(parm.bonds)} bonds, {len(parm.angles)} angles, {len(parm.dihedrals)} dihedrals")
 
-        lj_details = print_details(parm, "@1-{}".format(len(parm.atoms)))
-
-        for line in str(lj_details).split("\n"):
-            line = line.strip()
-            if not line or not line[0].isdigit():
+        # Read the topology arrays directly. ParmEd's printDetails action
+        # formats radius and well depth to four decimal places, which silently
+        # discards precision before LAMMPS coefficients are generated.
+        for atom_index, atom in enumerate(parm.atoms):
+            atom_type = atom.type
+            atom_mass = float(atom.mass)
+            diagonal = _amber_lj_pair(parm, atom.nb_idx - 1, atom.nb_idx - 1)
+            if diagonal is None:
                 continue
-
-            parts = line.split()
-            if len(parts) < 10:
-                continue
-
-            try:
-                atom_index = int(parts[0]) - 1
-                atom_type = parts[4]
-                atom_mass = float(parts[8])
-                lj_radius_amber = float(parts[6])
-                lj_depth_amber = float(parts[7])
-            except (ValueError, IndexError):
-                continue
-            lj_sigma = lj_radius_amber * (1 / (2 ** (1 / 6))) * 2
+            lj_depth_amber, lj_sigma = _ab_to_epsilon_sigma(*diagonal)
 
             # One LAMMPS type per distinct (AMBER type, LJ, mass) combination.
             # Atoms sharing an AMBER type name can differ in mass (hydrogen mass

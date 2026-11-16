@@ -1,0 +1,5 @@
+source leaprc.protein.ff14SB
+peptide = sequence { ACE ALA NME }
+saveamberparm peptide work/peptide.prmtop work/peptide.rst7
+savepdb peptide work/peptide-source.pdb
+quit

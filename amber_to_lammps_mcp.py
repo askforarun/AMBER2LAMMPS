@@ -7,6 +7,7 @@ converter and its Python 3.9+ installation independent of MCP.
 import contextlib
 import io
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -18,8 +19,17 @@ from amber_to_lammps import amber2lammps
 from amber_to_lammps_provenance import sha256_file, write_provenance
 
 
-_CONVERSION_LOCK = threading.Lock()
-_VALIDATION_LOCK = threading.Lock()
+_CONVERSION_LOCK = threading.RLock()
+_VALIDATION_LOCK = _CONVERSION_LOCK
+
+_ALLOWED_PARAMETER_COMMANDS = frozenset({
+    "angle_coeff", "bond_coeff", "dihedral_coeff", "pair_coeff",
+    "pair_modify", "pair_style", "special_bonds",
+})
+_ALLOWED_PAIR_STYLES = frozenset({
+    "hybrid", "hybrid/overlay", "lepton", "lj/cut/coul/cut",
+    "lj/cut/coul/long",
+})
 
 
 def _resolve_output(path: str, root: str) -> str:
@@ -195,9 +205,73 @@ def _parse_lammps_energies(output: str) -> Dict[str, float]:
     return {}
 
 
-def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
-                       overwrite: bool = False, output_root: Optional[str] = None,
-                       lammps_executable: Optional[str] = None) -> Dict[str, Any]:
+def _validate_parameter_include(path: str) -> None:
+    """Allow only declarative commands emitted by AMBER2LAMMPS."""
+    with open(path, encoding="utf-8") as stream:
+        for number, raw in enumerate(stream, 1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            command = line.split(None, 1)[0]
+            if command not in _ALLOWED_PARAMETER_COMMANDS:
+                raise ValueError(
+                    f"Unsafe or unsupported LAMMPS command in parameter file at "
+                    f"line {number}: {command}"
+                )
+            if any(marker in line for marker in ("$", "`", ";", "&", "|", "<", ">")):
+                raise ValueError(
+                    f"Unsafe substitution or shell metacharacter in parameter file "
+                    f"at line {number}."
+                )
+            if command == "pair_style":
+                tokens = line.split("#", 1)[0].split()[1:]
+                invalid = []
+                for token in tokens:
+                    if token in _ALLOWED_PAIR_STYLES:
+                        continue
+                    try:
+                        float(token)
+                    except ValueError:
+                        invalid.append(token)
+                if invalid:
+                    raise ValueError(
+                        f"Unsafe or unsupported LAMMPS pair style in parameter file "
+                        f"at line {number}: {invalid[0]}"
+                    )
+
+
+def _validated_lammps_contract(record: Dict[str, Any]) -> Dict[str, Any]:
+    contract = record.get("lammps")
+    if not isinstance(contract, dict):
+        raise ValueError("Provenance does not contain a valid LAMMPS contract.")
+    if contract.get("atom_style") != "full":
+        raise ValueError("Only the generated LAMMPS atom_style 'full' is allowed.")
+    if contract.get("coulomb") not in ("long", "cut"):
+        raise ValueError("LAMMPS Coulomb mode must be 'long' or 'cut'.")
+    cutoff = contract.get("cutoff_angstrom")
+    if isinstance(cutoff, bool) or not isinstance(cutoff, (int, float)):
+        raise ValueError("LAMMPS cutoff must be numeric.")
+    if not math.isfinite(cutoff) or cutoff <= 0.0 or cutoff > 100.0:
+        raise ValueError("LAMMPS cutoff must be finite and between 0 and 100 Angstrom.")
+    for key in ("sets_pair_style", "requires_kspace"):
+        if not isinstance(contract.get(key), bool):
+            raise ValueError(f"LAMMPS contract field '{key}' must be boolean.")
+    return contract
+
+
+def _validated_counts(record: Dict[str, Any]) -> Dict[str, int]:
+    counts = record.get("conversion", {}).get("counts", {})
+    for key in ("bonds", "angles", "dihedrals"):
+        value = counts.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ValueError(f"Provenance count '{key}' must be a non-negative integer.")
+    return counts
+
+
+def _check_lammps_run0_unlocked(provenance_file: str, timeout: float = 60.0,
+                                overwrite: bool = False,
+                                output_root: Optional[str] = None,
+                                lammps_executable: Optional[str] = None) -> Dict[str, Any]:
     """Run a bounded LAMMPS smoke test described by conversion provenance."""
     if timeout <= 0 or timeout > 600:
         raise ValueError("timeout must be greater than 0 and no more than 600 seconds.")
@@ -218,6 +292,9 @@ def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
     ):
         if not os.path.isfile(path) or sha256_file(path) != expected:
             raise ValueError(f"Conversion output is missing or differs from provenance: {path}")
+    _validate_parameter_include(parameter_file)
+    contract = _validated_lammps_contract(record)
+    counts = _validated_counts(record)
 
     configured = lammps_executable or os.environ.get("AMBER2LAMMPS_LAMMPS")
     if not configured:
@@ -244,8 +321,6 @@ def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
                 + ", ".join(existing)
             )
 
-        contract = record["lammps"]
-        counts = record["conversion"]["counts"]
         commands = ["units real", f"atom_style {contract['atom_style']}", "boundary p p p"]
         if counts["bonds"]:
             commands.append("bond_style harmonic")
@@ -316,6 +391,16 @@ def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
         },
     }
     return response
+
+
+def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
+                       overwrite: bool = False, output_root: Optional[str] = None,
+                       lammps_executable: Optional[str] = None) -> Dict[str, Any]:
+    """Serialize validation with conversions targeting the same workspace."""
+    with _VALIDATION_LOCK:
+        return _check_lammps_run0_unlocked(
+            provenance_file, timeout, overwrite, output_root, lammps_executable
+        )
 
 
 def create_server():

@@ -203,6 +203,59 @@ class McpConversionTests(ConversionTestCase):
         with self.assertRaisesRegex(ValueError, "differs from provenance"):
             a2l_mcp._check_lammps_run0(result["files"]["provenance"])
 
+    def test_run0_rejects_command_injection_even_with_updated_hash(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="unsafe.data", parameter_file="unsafe.parm",
+        )
+        with open("unsafe.parm", "a", encoding="utf-8") as stream:
+            stream.write("shell touch command-injection-worked\n")
+        provenance_file = result["files"]["provenance"]
+        with open(provenance_file, encoding="utf-8") as stream:
+            record = json.load(stream)
+        record["outputs"]["lammps_parameters"]["sha256"] = (
+            a2l_provenance.sha256_file("unsafe.parm")
+        )
+        with open(provenance_file, "w", encoding="utf-8") as stream:
+            json.dump(record, stream)
+
+        with self.assertRaisesRegex(ValueError, "Unsafe or unsupported.*shell"):
+            a2l_mcp._check_lammps_run0(provenance_file)
+        self.assertFalse(os.path.exists("command-injection-worked"))
+
+    def test_run0_rejects_unapproved_pair_style_with_updated_hash(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="style.data", parameter_file="style.parm",
+        )
+        with open("style.parm", "a", encoding="utf-8") as stream:
+            stream.write("pair_style python malicious_callback 9.0\n")
+        provenance_file = result["files"]["provenance"]
+        with open(provenance_file, encoding="utf-8") as stream:
+            record = json.load(stream)
+        record["outputs"]["lammps_parameters"]["sha256"] = (
+            a2l_provenance.sha256_file("style.parm")
+        )
+        with open(provenance_file, "w", encoding="utf-8") as stream:
+            json.dump(record, stream)
+        with self.assertRaisesRegex(ValueError, "unsupported LAMMPS pair style"):
+            a2l_mcp._check_lammps_run0(provenance_file)
+
+    def test_run0_rejects_untrusted_provenance_contract(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="contract.data", parameter_file="contract.parm",
+        )
+        provenance_file = result["files"]["provenance"]
+        with open(provenance_file, encoding="utf-8") as stream:
+            record = json.load(stream)
+        record["lammps"]["atom_style"] = "full\nshell touch injected"
+        with open(provenance_file, "w", encoding="utf-8") as stream:
+            json.dump(record, stream)
+        with self.assertRaisesRegex(ValueError, "atom_style 'full'"):
+            a2l_mcp._check_lammps_run0(provenance_file)
+        self.assertFalse(os.path.exists("injected"))
+
     def test_provenance_source_control_rejects_enclosing_repository(self):
         completed = types.SimpleNamespace(stdout="/unrelated/project\n")
         with mock.patch.object(a2l_provenance.subprocess, "run", return_value=completed):
@@ -652,14 +705,21 @@ class HydrogenMassRepartitioningTests(ConversionTestCase):
 class UnknownAtomTypeTests(unittest.TestCase):
     """Issue #5: unmapped atoms must raise instead of silently becoming type 1."""
 
-    def test_unparsed_atoms_raise_during_topology_loading(self):
-        def empty_details(parm, mask):
-            return ""
+    def test_topology_loading_uses_exact_arrays_not_formatted_details(self):
+        def unusable_details(parm, mask):
+            raise AssertionError("formatted printDetails output must not be used")
 
-        with self.assertRaisesRegex(ValueError, "Could not read atom type"):
-            a2l.load_topology_context(
-                [ETHANOL_PRMTOP], False, pmd.amber.AmberParm, empty_details
-            )
+        context = a2l.load_topology_context(
+            [ETHANOL_PRMTOP], False, pmd.amber.AmberParm, unusable_details
+        )
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        atom = parm.atoms[0]
+        expected_epsilon, expected_sigma = a2l._ab_to_epsilon_sigma(
+            *a2l._amber_lj_pair(parm, atom.nb_idx - 1, atom.nb_idx - 1)
+        )
+        canonical = context.type_remaps[0][0]
+        self.assertEqual(context.nonbonded_params[canonical]["lj_epsilon"], expected_epsilon)
+        self.assertEqual(context.nonbonded_params[canonical]["lj_sigma"], expected_sigma)
 
     def test_unmapped_atom_raises_when_writing_atoms(self):
         parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
