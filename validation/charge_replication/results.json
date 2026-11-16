@@ -1,0 +1,41 @@
+{
+  "fixture": "GAFF2 epon",
+  "atoms_per_template": 53,
+  "target_charge_e": 0.0,
+  "source_topology_charge_e": -0.0029959956756283046,
+  "intermol_emitted_charge_e": -0.0029959999999999293,
+  "amber2lammps_raw_target_charge_e": -0.0029959956000000093,
+  "amber2lammps_neutral_target_charge_e": -1.0000000688625832e-09,
+  "amber2lammps_uniform_shift_per_atom_e": 5.652822029487367e-05,
+  "replication": [
+    {
+      "copies": 1,
+      "raw_topology_total_e": -0.0029959956756283046,
+      "intermol_total_e": -0.0029959999999999293,
+      "amber2lammps_raw_target_total_e": -0.0029959956000000093,
+      "amber2lammps_neutral_target_total_e": -1.0000000688625832e-09
+    },
+    {
+      "copies": 10,
+      "raw_topology_total_e": -0.029959956756283046,
+      "intermol_total_e": -0.029959999999999293,
+      "amber2lammps_raw_target_total_e": -0.029959956000000093,
+      "amber2lammps_neutral_target_total_e": -1.0000000688625832e-08
+    },
+    {
+      "copies": 100,
+      "raw_topology_total_e": -0.29959956756283046,
+      "intermol_total_e": -0.2995999999999929,
+      "amber2lammps_raw_target_total_e": -0.29959956000000093,
+      "amber2lammps_neutral_target_total_e": -1.0000000688625832e-07
+    },
+    {
+      "copies": 1000,
+      "raw_topology_total_e": -2.9959956756283046,
+      "intermol_total_e": -2.9959999999999294,
+      "amber2lammps_raw_target_total_e": -2.9959956000000094,
+      "amber2lammps_neutral_target_total_e": -1.0000000688625832e-06
+    }
+  ],
+  "interpretation": "Only one-template systems are converted. The larger totals are arithmetic projections: an unchanged per-template residual contributes N times that residual for N copies. AMBER2LAMMPS removes it when the required target is zero."
+}
