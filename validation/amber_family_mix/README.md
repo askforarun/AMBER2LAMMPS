@@ -58,13 +58,14 @@ python validate_sander.py \
 The script rebuilds the combined AMBER reference, runs `sander` and LAMMPS on
 the same coordinates and cell, then compares bonded, van der Waals,
 electrostatic and total energies plus every Cartesian force component. The
-committed result has a total-energy difference of about 0.00007 kcal/mol, a
-maximum force-component difference of 0.0437 kcal/mol/Angstrom, and a force
-RMSE of 0.0135 kcal/mol/Angstrom. See `expected_results.json` for the numerical
+committed result has a total-energy difference of 0.00010 kcal/mol, a
+maximum force-component difference of 0.000543 kcal/mol/Angstrom, and a force
+RMSE of 0.0000817 kcal/mol/Angstrom. See `expected_results.json` for the numerical
 values and pass/fail tolerances.
 
-The LAMMPS input matches AMBER's reported 30x30x30 PME mesh, interpolation
-order 4 and Ewald coefficient 0.42001. It also uses `dielectric
+The comparison uses a converged direct Ewald calculation in LAMMPS and a
+96x96x96, order-6 PME grid in `sander`, both with Ewald coefficient 0.42001.
+It also uses `dielectric
 1.0000346111225924`, the ratio between the LAMMPS real-units Coulomb factor
 (332.06371) and AMBER's factor (332.0522173). Without that explicit conversion,
 the small difference between physical constants obscures the force-field
