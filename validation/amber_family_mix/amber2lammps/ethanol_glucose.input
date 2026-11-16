@@ -15,8 +15,8 @@ read_data ethanol_glucose.data
 # scaling, the complete I-J matrix, and all bonded coefficients.
 include ethanol_glucose.parm
 pair_modify table 0
-kspace_style pppm 1.0e-8
-kspace_modify mesh 30 30 30 order 4 gewald 0.42001
+kspace_style ewald 1.0e-8
+kspace_modify gewald 0.42001
 
 thermo_style custom ebond eangle edihed eimp evdwl ecoul elong etail pe
 dump validation_forces all custom 1 lammps_forces.dump id fx fy fz

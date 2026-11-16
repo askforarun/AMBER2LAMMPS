@@ -102,6 +102,21 @@ def distinct_14_scaling_profiles(profiles):
     return list(dict.fromkeys(profile for profile in profiles if profile is not None))
 
 
+def validate_cross_topology_c4(top_ctx, topologies):
+    """Reject undefined C4 interactions between independent topology files."""
+    if top_ctx.has_c4 and len(topologies) > 1:
+        raise UnsupportedNonbondedError(
+            "12-6-4 conversion with multiple topology files is not supported because "
+            "AMBER does not provide cross-topology C4 coefficients. Convert a combined "
+            "topology or use a validated explicit cross-interaction model."
+        )
+
+
+def dihedral_phase_degrees(term):
+    """Return a ParmEd dihedral phase, whose public unit is degrees."""
+    return float(term.phase)
+
+
 def _amber_lj_pair(parm, type_i, type_j):
     """Return the raw (A, B) coefficients for two zero-based AMBER LJ types."""
     ntypes = parm.ptr("ntypes")
@@ -216,12 +231,16 @@ Examples:
                         help='Write debug files <data stem>.pairs.txt, .bonds.txt, .angles.txt, .dihedrals.txt beside the data file')
     parser.add_argument('--charges', type=float, nargs='+', required=True,
                         help='Target net charge per topology (same length/order as --topologies). Use 0 0 ... for neutral molecules.')
-    parser.add_argument('--c4-cutoff', type=float, default=9.0,
-                        help='Cutoff in Angstrom for generated 12-6-4 hybrid/overlay pair styles (default: 9.0)')
-    parser.add_argument('--c4-coulomb', choices=('long', 'cut'), default='long',
-                        help='Coulomb treatment for generated 12-6-4 pair style (default: long)')
+    parser.add_argument('--nonbonded-cutoff', '--c4-cutoff', dest='c4_cutoff',
+                        type=float, default=9.0,
+                        help='Cutoff in Angstrom for generated mixed-scaling or 12-6-4 pair styles (default: 9.0; --c4-cutoff is a compatibility alias)')
+    parser.add_argument('--nonbonded-coulomb', '--c4-coulomb', dest='c4_coulomb',
+                        choices=('long', 'cut'), default='long',
+                        help='Coulomb treatment for generated mixed-scaling or 12-6-4 pair styles (default: long; --c4-coulomb is a compatibility alias)')
     parser.add_argument('--typelabels', action='store_true',
                         help='Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same.')
+    parser.add_argument('--allow-pdb-name-mismatch', action='store_true',
+                        help='Skip PDB/topology atom-name identity checks (unsafe; atom counts and ordering are still assumed)')
     parser.add_argument('--provenance', metavar='FILE',
                         help='Write a versioned JSON provenance record for this conversion')
     
@@ -455,6 +474,8 @@ def detect_multi_mode(topologies, molecule_counts, pdb_file, verbose):
                     f"This appears to be a combined PDB file with multiple molecules. "
                     f"Please update your molecule count to {atom_count // single_molecule_atoms} to match the PDB content."
                 )
+        except ValueError:
+            raise
         except Exception as e:
             if verbose:
                 print(f"Warning: Could not analyze PDB file for combined detection: {e}")
@@ -674,6 +695,42 @@ def validate_pdb_atom_count(pdb_atoms, molecule_counts, total_atoms_per_topology
     return expected_total_atoms
 
 
+def validate_pdb_atom_identity(pdb_atoms, all_parms, molecule_counts, allow_mismatch=False):
+    """Check that sequential PDB atoms identify the topology atoms they receive.
+
+    A bare element name (for example ``C`` or ``H`` from Open Babel) is
+    accepted for any topology atom of that element. More specific names must
+    match exactly. This catches reordered heavy atoms without rejecting PDBs
+    that legitimately omit hydrogen numbering.
+    """
+    if allow_mismatch:
+        return
+    expected = []
+    for parm, count in zip(all_parms, molecule_counts):
+        for _ in range(count):
+            expected.extend(parm.atoms)
+
+    mismatches = []
+    for index, (pdb_atom, topology_atom) in enumerate(zip(pdb_atoms, expected), 1):
+        pdb_name = pdb_atom["name"].strip().upper()
+        topology_name = topology_atom.name.strip().upper()
+        element = topology_atom.element_name.strip().upper()
+        if pdb_name not in (topology_name, element):
+            mismatches.append(
+                f"atom {index}: PDB '{pdb_atom['name']}' != topology "
+                f"'{topology_atom.name}' ({topology_atom.element_name})"
+            )
+            if len(mismatches) == 8:
+                break
+    if mismatches:
+        raise ValueError(
+            "PDB atom names/order do not match the topology assignment: "
+            + "; ".join(mismatches)
+            + ". Reorder or rename the PDB atoms, or use "
+            "--allow-pdb-name-mismatch only after independently verifying the ordering."
+        )
+
+
 def compute_box_bounds(x_coords, y_coords, z_coords, buffer):
     return BoxBounds(
         xlo=np.min(x_coords) - buffer,
@@ -819,12 +876,15 @@ def write_connectivity_labels_section(data_file, conn_ctx, verbose):
         print("Writing connectivity type labels section...")
 
     with open(data_file, "a") as flammps:
-        flammps.write("\nBond Type Labels\n\n")
-        flammps.write("\n".join(conn_ctx.bond_type_label_lines) + "\n")
-        flammps.write("\nAngle Type Labels\n\n")
-        flammps.write("\n".join(conn_ctx.angle_type_label_lines) + "\n")
-        flammps.write("\nDihedral Type Labels\n\n")
-        flammps.write("\n".join(conn_ctx.dihedral_type_label_lines) + "\n")
+        if conn_ctx.bond_type_label_lines:
+            flammps.write("\nBond Type Labels\n\n")
+            flammps.write("\n".join(conn_ctx.bond_type_label_lines) + "\n")
+        if conn_ctx.angle_type_label_lines:
+            flammps.write("\nAngle Type Labels\n\n")
+            flammps.write("\n".join(conn_ctx.angle_type_label_lines) + "\n")
+        if conn_ctx.dihedral_type_label_lines:
+            flammps.write("\nDihedral Type Labels\n\n")
+            flammps.write("\n".join(conn_ctx.dihedral_type_label_lines) + "\n")
 
 def _ab_to_epsilon_sigma(acoef, bcoef):
     if acoef <= 0.0 or bcoef <= 0.0:
@@ -835,7 +895,7 @@ def _ab_to_epsilon_sigma(acoef, bcoef):
 def build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb):
     """Build a complete I-J matrix, preserving AMBER A, B, and C4 coefficients."""
     if c4_cutoff <= 0.0:
-        raise ValueError(f"--c4-cutoff must be positive (got {c4_cutoff})")
+        raise ValueError(f"--nonbonded-cutoff must be positive (got {c4_cutoff})")
 
     atom_types = sorted(top_ctx.atom_type_mapping, key=top_ctx.atom_type_mapping.get)
     lj_style = f"lj/cut/coul/{c4_coulomb}"
@@ -879,7 +939,7 @@ def build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb):
 def build_mixed_scaling_pair_coeff_lines(top_ctx, cutoff, coulomb):
     """Build a hybrid I-J matrix for non-covalent mixed-scaling topologies."""
     if cutoff <= 0.0:
-        raise ValueError(f"--c4-cutoff must be positive (got {cutoff})")
+        raise ValueError(f"--nonbonded-cutoff must be positive (got {cutoff})")
     if top_ctx.has_c4:
         raise UnsupportedScalingError(
             "Combining mixed SCEE/SCNB profiles with 12-6-4 terms is not yet supported."
@@ -1015,9 +1075,9 @@ def process_connectivity(all_parms, molecule_counts, topologies, use_typelabels,
         for term in terms:
             phi_k = float(term.phi_k)
             per = int(round(float(term.per)))
-            phase = float(term.phase)
-            if abs(phase) <= 2 * np.pi + 0.1:
-                phase = np.degrees(phase)
+            # ParmEd DihedralType.phase is expressed in degrees. Guessing from
+            # magnitude corrupts legitimate small phases such as 3 degrees.
+            phase = dihedral_phase_degrees(term)
             result.append((round(phi_k, 4), per, round(phase, 4)))
         return tuple(sorted(result))
 
@@ -1201,23 +1261,19 @@ def process_connectivity(all_parms, molecule_counts, topologies, use_typelabels,
 
 
 def write_connectivity_sections(data_file, conn_ctx, verbose):
-    if verbose:
-        print("Writing bonds section...")
+    sections = (
+        ("Bonds", conn_ctx.bond_lines),
+        ("Angles", conn_ctx.angle_lines),
+        ("Dihedrals", conn_ctx.dihedral_lines),
+    )
     with open(data_file, "a") as flammps:
-        flammps.write("\nBonds \n\n")
-        flammps.write("\n".join(conn_ctx.bond_lines) + "\n")
-
-    if verbose:
-        print("Writing angles section...")
-    with open(data_file, "a") as flammps:
-        flammps.write("\nAngles \n\n")
-        flammps.write("\n".join(conn_ctx.angle_lines) + "\n")
-
-    if verbose:
-        print("Writing dihedrals section...")
-    with open(data_file, "a") as flammps:
-        flammps.write("\nDihedrals \n\n")
-        flammps.write("\n".join(conn_ctx.dihedral_lines) + "\n")
+        for name, lines in sections:
+            if not lines:
+                continue
+            if verbose:
+                print(f"Writing {name.lower()} section...")
+            flammps.write(f"\n{name} \n\n")
+            flammps.write("\n".join(lines) + "\n")
 
 
 
@@ -1327,7 +1383,8 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
 
 def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target,
                  buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long",
-                 use_typelabels=False, provenance_file=None, provenance_interface="python-api"):
+                 use_typelabels=False, provenance_file=None, provenance_interface="python-api",
+                 allow_pdb_name_mismatch=False):
     amber_parm_cls = pmd.amber.AmberParm
     print_details = pmd.tools.actions.printDetails
 
@@ -1350,8 +1407,7 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
 
     pdb_atoms, x_coords, y_coords, z_coords, box_bounds = parse_pdb_coordinates(pdb_file, verbose)
     top_ctx = load_topology_context(topologies, verbose, amber_parm_cls, print_details)
-    initialize_output_files(data_file, param_file, topologies, pdb_file)
-
+    validate_cross_topology_c4(top_ctx, topologies)
     expected_total_atoms = validate_pdb_atom_count(
         pdb_atoms=pdb_atoms,
         molecule_counts=molecule_counts,
@@ -1361,6 +1417,11 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         pdb_file=pdb_file,
         verbose=verbose,
     )
+    validate_pdb_atom_identity(
+        pdb_atoms, top_ctx.all_parms, molecule_counts,
+        allow_mismatch=allow_pdb_name_mismatch,
+    )
+    initialize_output_files(data_file, param_file, topologies, pdb_file)
 
     if not box_bounds:
         box_bounds = compute_box_bounds(x_coords, y_coords, z_coords, buffer)
@@ -1503,6 +1564,7 @@ def main():
             use_typelabels=args.typelabels,
             provenance_file=args.provenance,
             provenance_interface="cli",
+            allow_pdb_name_mismatch=args.allow_pdb_name_mismatch,
         )
         print(f"✓ Conversion completed successfully!")
         print(f"Output files: {args.data_file}, {args.param_file}")

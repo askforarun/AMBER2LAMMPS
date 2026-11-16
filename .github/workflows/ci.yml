@@ -48,6 +48,19 @@ jobs:
       - name: Run tests
         run: python -m unittest discover -v
 
+      - name: Exercise installed MCP server
+        if: matrix.python-version == '3.11'
+        run: |
+          python -m pip install '.[mcp]'
+          python - <<'PY'
+          import asyncio
+          from amber_to_lammps_mcp import create_server
+          server = create_server()
+          tools = asyncio.run(server.list_tools())
+          names = {tool.name for tool in tools}
+          assert "convert" in names, names
+          PY
+
   package:
     name: build and check distributions
     runs-on: ubuntu-latest
@@ -96,6 +109,9 @@ jobs:
   sander:
     name: sander/LAMMPS AMBER-family validation
     runs-on: ubuntu-24.04
+    env:
+      LAMMPS_COMMIT: 26e5f79b4e5aa77b65fc4fbf314b206bf0530b45
+      LAMMPS_CACHE_FLAVOR: molecule-extra_molecule-kspace-rigid-v2
     steps:
       - uses: actions/checkout@v4
         with:
@@ -108,7 +124,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: lammps-build/lmp
-          key: lammps-${{ runner.os }}-${{ runner.arch }}-ubuntu24-gcc-26e5f79-molecule-extra_molecule-kspace-rigid-v2
+          key: lammps-${{ runner.os }}-${{ runner.arch }}-ubuntu24-gcc-${{ env.LAMMPS_COMMIT }}-${{ env.LAMMPS_CACHE_FLAVOR }}
 
       # Ubuntu's LAMMPS package omits EXTRA-MOLECULE, which provides the
       # Fourier dihedral style emitted by AMBER2LAMMPS. On a cache miss, build
@@ -117,11 +133,11 @@ jobs:
         if: steps.cache-lammps.outputs.cache-hit != 'true'
         with:
           repository: lammps/lammps
-          ref: 26e5f79b4e5aa77b65fc4fbf314b206bf0530b45
+          ref: ${{ env.LAMMPS_COMMIT }}
           path: lammps-source
           persist-credentials: false
 
-      - uses: mamba-org/setup-micromamba@v3
+      - uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39
         with:
           environment-name: amber-validation
           create-args: >-

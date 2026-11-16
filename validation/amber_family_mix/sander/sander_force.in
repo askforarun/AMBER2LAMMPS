@@ -17,4 +17,9 @@ GAFF2 ethanol plus GLYCAM glucose force reference
 /
 &ewald
   dsum_tol=1.0e-8,
+  nfft1=96,
+  nfft2=96,
+  nfft3=96,
+  order=6,
+  ew_coeff=0.42001,
 /

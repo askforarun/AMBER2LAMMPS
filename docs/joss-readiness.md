@@ -10,13 +10,13 @@ explicit.
 | Public source, issues and contribution path | GitHub repository; `CONTRIBUTING.md` | Met |
 | Installable language-standard package | `pyproject.toml`; PyPI releases | Met |
 | Tests and continuous integration | Python matrix, packaging, whitespace and required `sander` validation jobs | Met |
-| Scientific correctness procedures | `validation/amber_family_mix/`; `docs/support-matrix.md` | Met for the currently validated GAFF2 + GLYCAM capability |
+| Scientific correctness procedures | `validation/amber_family_mix/`; `validation/amber_protein_water_ions/`; `docs/support-matrix.md` | Met for the currently validated GAFF2 + GLYCAM and ff14SB + TIP3P + NaCl fixtures |
 | Clearly bounded research scope | `docs/support-matrix.md`; `docs/scientific-design.md` | Met |
 | Release history and changelog | `CHANGELOG.md`; annotated `v1.0.0` and `v1.1.0` releases | Met |
 | Contribution, governance and support expectations | `CONTRIBUTING.md`; `GOVERNANCE.md` | Met |
 | More than six months of public iterative development | Public Git history beginning September 2025 | Met by repository age; editors make the final assessment |
 | Demonstrated research impact/use | `docs/research-use.md` | **Blocked: real use must be documented** |
-| Feature-complete claimed scope | Support matrix | **In progress: protein, solvent and ion claims remain planned and must not appear as supported** |
+| Feature-complete claimed scope | Support matrix | Validated for the specific systems listed; larger folded proteins and protein/ligand or protein/carbohydrate mixtures remain planned and must not be claimed |
 | JOSS manuscript and bibliography | `paper/paper.md`, `paper/paper.bib` | **Missing** |
 | Accurate citation metadata | `CITATION.cff` | Version/date corrected; add an ORCID only after the author supplies and verifies it |
 | AI usage disclosure | `AI_USAGE.md` | Draft present; authors must confirm completeness before submission |

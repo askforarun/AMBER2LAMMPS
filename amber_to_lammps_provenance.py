@@ -27,16 +27,32 @@ def package_version(distribution):
         return None
 
 
-def git_commit():
+def source_control():
+    """Identify this source checkout without borrowing an enclosing repo."""
     try:
-        root = os.path.dirname(os.path.abspath(__file__))
-        result = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=root, check=True,
+        module_root = os.path.dirname(os.path.realpath(__file__))
+        top_level = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"], cwd=module_root, check=True,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
-        )
-        return result.stdout.strip() or None
+        ).stdout.strip()
+        if os.path.realpath(top_level) != module_root:
+            return {"commit": None, "dirty": None, "repository_root": None}
+        commit = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=module_root, check=True,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+        ).stdout.strip() or None
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=module_root, check=True, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, text=True,
+        ).stdout
+        return {
+            "commit": commit,
+            "dirty": bool(status.strip()),
+            "repository_root": module_root,
+        }
     except (OSError, subprocess.SubprocessError):
-        return None
+        return {"commit": None, "dirty": None, "repository_root": None}
 
 
 def file_record(path):
@@ -105,13 +121,16 @@ def build_provenance(*, data_file, param_file, topologies, molecule_counts,
             "pairs.txt", "bonds.txt", "angles.txt", "dihedrals.txt"
         )]
 
+    source = source_control()
     return {
         "$schema": "https://raw.githubusercontent.com/askforarun/AMBER2LAMMPS/main/docs/provenance.schema.json",
         "schema_version": SCHEMA_VERSION,
         "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
         "software": {
             "amber_to_lammps_version": package_version("amber-to-lammps") or "source-checkout",
-            "amber_to_lammps_git_commit": git_commit(),
+            "amber_to_lammps_git_commit": source["commit"],
+            "amber_to_lammps_git_dirty": source["dirty"],
+            "amber_to_lammps_repository_root": source["repository_root"],
             "python": platform.python_version(),
             "parmed": package_version("ParmEd"),
             "numpy": package_version("numpy"),

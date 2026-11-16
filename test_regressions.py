@@ -7,12 +7,16 @@ import json
 import os
 import shutil
 import tempfile
+import types
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest import mock
 
 import parmed as pmd
 
 import amber_to_lammps as a2l
 import amber_to_lammps_mcp as a2l_mcp
+import amber_to_lammps_provenance as a2l_provenance
 from amber_to_lammps import amber2lammps
 from validation.amber_protein_water_ions.prepare_shake_data import prepare as prepare_shake_data
 
@@ -126,6 +130,47 @@ class McpConversionTests(ConversionTestCase):
             )
         self.assertFalse(os.path.exists("mcp.data"))
 
+    def test_mcp_rejects_outputs_outside_workspace(self):
+        with self.assertRaisesRegex(ValueError, "outside the MCP workspace"):
+            a2l_mcp.convert_amber_system(
+                pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+                charges=[0], data_file=os.path.join(self.old_cwd, "escape.data"),
+                parameter_file="safe.parm",
+            )
+
+    def test_mcp_requires_explicit_overwrite(self):
+        first = dict(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="mcp.data", parameter_file="mcp.parm",
+        )
+        a2l_mcp.convert_amber_system(**first)
+        with self.assertRaisesRegex(FileExistsError, "overwrite=true"):
+            a2l_mcp.convert_amber_system(**first)
+        a2l_mcp.convert_amber_system(**first, overwrite=True)
+
+    def test_concurrent_mcp_calls_keep_messages_isolated(self):
+        def convert(index):
+            return a2l_mcp.convert_amber_system(
+                pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+                charges=[index + 1], data_file=f"mcp-{index}.data",
+                parameter_file=f"mcp-{index}.parm",
+            )
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(convert, range(4)))
+        for index, result in enumerate(results):
+            joined = "\n".join(result["messages"])
+            self.assertIn(f"--charges requests {index + 1:.6f} e", joined)
+            for other in set(range(1, 5)) - {index + 1}:
+                self.assertNotIn(f"--charges requests {other:.6f} e", joined)
+
+    def test_provenance_source_control_rejects_enclosing_repository(self):
+        completed = types.SimpleNamespace(stdout="/unrelated/project\n")
+        with mock.patch.object(a2l_provenance.subprocess, "run", return_value=completed):
+            source = a2l_provenance.source_control()
+        self.assertIsNone(source["commit"])
+        self.assertIsNone(source["dirty"])
+
 
 class Tip3pShakePreparationTests(ConversionTestCase):
     """AMBER water triangles become the topology required by LAMMPS SHAKE."""
@@ -222,6 +267,47 @@ class AmberFamilyScalingTests(ConversionTestCase):
                 [0.0000010021786493, 0.0],
             )
         self.assertNotIn("but multi-mode expects", output.getvalue())
+
+    def test_cross_topology_c4_fails_closed(self):
+        context = types.SimpleNamespace(has_c4=True)
+        with self.assertRaisesRegex(a2l.UnsupportedNonbondedError, "cross-topology C4"):
+            a2l.validate_cross_topology_c4(context, ["ion.prmtop", "water.prmtop"])
+
+    def test_small_dihedral_phase_remains_degrees(self):
+        self.assertEqual(a2l.dihedral_phase_degrees(types.SimpleNamespace(phase=3.0)), 3.0)
+
+
+class PdbIdentityAndEmptySectionTests(ConversionTestCase):
+    def test_reordered_named_atoms_fail_before_outputs_are_written(self):
+        bad_pdb = os.path.join(self.tmp, "bad-order.pdb")
+        with open(ETHANOL_PDB) as source:
+            lines = source.readlines()
+        atom_indices = [i for i, line in enumerate(lines) if line.startswith(("ATOM", "HETATM"))]
+        first, oxygen = atom_indices[0], atom_indices[2]
+        lines[first] = lines[first][:12] + " O  " + lines[first][16:]
+        lines[oxygen] = lines[oxygen][:12] + " C  " + lines[oxygen][16:]
+        with open(bad_pdb, "w") as target:
+            target.writelines(lines)
+        with self.assertRaisesRegex(ValueError, "names/order do not match"):
+            amber2lammps(
+                "bad.data", "bad.parm", [ETHANOL_PRMTOP], [1], bad_pdb, [0]
+            )
+        self.assertFalse(os.path.exists("bad.data"))
+        amber2lammps(
+            "allowed.data", "allowed.parm", [ETHANOL_PRMTOP], [1], bad_pdb, [0],
+            allow_pdb_name_mismatch=True,
+        )
+
+    def test_empty_connectivity_sections_are_omitted(self):
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        parm.dihedrals.clear()
+        topology = os.path.join(self.tmp, "no-dihedrals.prmtop")
+        parm.write_parm(topology)
+        self.convert(topology=topology, use_typelabels=True)
+        with open("out.data") as stream:
+            data = stream.read()
+        self.assertNotIn("\nDihedrals ", data)
+        self.assertNotIn("\nDihedral Type Labels", data)
 
 
 class PdbBoxTests(ConversionTestCase):
