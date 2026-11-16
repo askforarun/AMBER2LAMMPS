@@ -1,0 +1,49 @@
+HEADER 
+TITLE     Built with Packmol                                             
+REMARK   Packmol generated pdb file 
+REMARK   Home-Page: http://m3g.iqm.unicamp.br/packmol
+REMARK
+CRYST1   30.000   30.000   30.000  90.00  90.00  90.00 P 1           1
+HETATM    1  C   UNL A   1       4.626  17.152  16.159  1.00  0.00           C  
+HETATM    2  C   UNL A   1       3.585  16.904  17.231  1.00  0.00           C  
+HETATM    3  O   UNL A   1       2.347  16.549  16.634  1.00  0.00           O  
+HETATM    4  H   UNL A   1       5.588  17.416  16.606  1.00  0.00           H  
+HETATM    5  H   UNL A   1       4.311  17.963  15.494  1.00  0.00           H  
+HETATM    6  H   UNL A   1       4.758  16.262  15.536  1.00  0.00           H  
+HETATM    7  H   UNL A   1       3.436  17.795  17.847  1.00  0.00           H  
+HETATM    8  H   UNL A   1       3.896  16.082  17.883  1.00  0.00           H  
+HETATM    9  H   UNL A   1       2.072  17.289  16.065  1.00  0.00           H  
+ATOM     10  C1  0GA B   1       5.561  15.194   3.270  1.00  0.00              
+ATOM     11  H1  0GA B   1       6.037  14.796   2.374  1.00  0.00              
+ATOM     12  C2  0GA B   1       4.268  14.387   3.581  1.00  0.00              
+ATOM     13  H2  0GA B   1       4.532  13.328   3.584  1.00  0.00              
+ATOM     14  C3  0GA B   1       3.698  14.748   4.969  1.00  0.00              
+ATOM     15  H3  0GA B   1       3.302  15.766   4.941  1.00  0.00              
+ATOM     16  C4  0GA B   1       4.763  14.636   6.084  1.00  0.00              
+ATOM     17  H4  0GA B   1       5.055  13.591   6.205  1.00  0.00              
+ATOM     18  C5  0GA B   1       6.013  15.479   5.751  1.00  0.00              
+ATOM     19  H5  0GA B   1       5.723  16.532   5.747  1.00  0.00              
+ATOM     20  C6  0GA B   1       7.148  15.288   6.782  1.00  0.00              
+ATOM     21  H62 0GA B   1       6.758  15.338   7.799  1.00  0.00              
+ATOM     22  H61 0GA B   1       7.614  14.309   6.648  1.00  0.00              
+ATOM     23  O6  0GA B   1       8.152  16.315   6.637  1.00  0.00              
+ATOM     24  H6O 0GA B   1       7.844  17.129   7.044  1.00  0.00              
+ATOM     25  O5  0GA B   1       6.508  15.121   4.382  1.00  0.00              
+ATOM     26  O4  0GA B   1       4.193  15.109   7.331  1.00  0.00              
+ATOM     27  H4O 0GA B   1       3.349  14.651   7.452  1.00  0.00              
+ATOM     28  O3  0GA B   1       2.611  13.836   5.274  1.00  0.00              
+ATOM     29  H3O 0GA B   1       2.079  13.742   4.471  1.00  0.00              
+ATOM     30  O2  0GA B   1       3.247  14.589   2.550  1.00  0.00              
+ATOM     31  H2O 0GA B   1       3.243  15.519   2.286  1.00  0.00              
+ATOM     32  HO1 ROH B   2       5.326  16.154   3.114  1.00  0.00              
+ATOM     33  O1  ROH B   2       6.124  16.651   2.922  1.00  0.00              
+CONECT    1    2    4    5    6
+CONECT    2    1    3    7    8
+CONECT    3    2    9
+CONECT    4    1
+CONECT    5    1
+CONECT    6    1
+CONECT    7    2
+CONECT    8    2
+CONECT    9    3
+END

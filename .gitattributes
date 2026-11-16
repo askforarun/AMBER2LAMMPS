@@ -1,0 +1,7 @@
+# Scientific fixed-width/generated fixtures intentionally preserve padding.
+validation/amber_family_mix/amber2lammps/*.data -whitespace
+validation/amber_family_mix/source/*.pdb -whitespace
+validation/amber_family_mix/source/*.prmtop -whitespace
+validation/amber_protein_water_ions/amber2lammps/*.data -whitespace
+validation/amber_protein_water_ions/source/*.pdb -whitespace
+validation/amber_protein_water_ions/source/*.prmtop -whitespace

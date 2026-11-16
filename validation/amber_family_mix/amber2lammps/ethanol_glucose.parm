@@ -1,0 +1,125 @@
+# Force field parameters generated from AMBER topologies
+
+# Mixed AMBER-family 1-4 scaling: one hybrid instance per active profile.
+# All I-J coefficients are explicit; cross-profile pairs use Lorentz-Berthelot mixing.
+# LAMMPS requires fractional global 1-4 weights before hybrid instances may override them.
+special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333
+pair_style hybrid lj/cut/coul/long 9 9 lj/cut/coul/long 9 9
+pair_modify tail yes
+pair_modify pair lj/cut/coul/long 1 special lj 0.0 0.0 0.5 special coul 0.0 0.0 0.8333333333
+pair_modify pair lj/cut/coul/long 2 special lj 0.0 0.0 1 special coul 0.0 0.0 1
+pair_coeff 1 1 lj/cut/coul/long 1 0.1078 3.397709531243626 # c3-c3
+pair_coeff 1 2 lj/cut/coul/long 1 0.1001269194572569 3.32029043263723 # c3-oh
+pair_coeff 1 3 lj/cut/coul/long 1 0.04735229667080573 2.99894326500401 # c3-hc
+pair_coeff 1 4 lj/cut/coul/long 1 0.04735229667080573 2.909853393189976 # c3-h1
+pair_coeff 1 5 lj/cut/coul/long 1 0.02250910926713894 1.967817088628381 # c3-ho
+pair_coeff 1 6 lj/cut/coul/long 1 0.1085970533670228 3.39868951983358 # c3-Cg
+pair_coeff 1 7 lj/cut/coul/long 1 0.04113951871376232 2.84544141586843 # c3-H2
+pair_coeff 1 8 lj/cut/coul/long 1 0.04113951871376232 2.934531287682463 # c3-H1
+pair_coeff 1 9 lj/cut/coul/long 1 0.1506025232192343 3.232091459541337 # c3-Oh
+pair_coeff 1 10 lj/cut/coul/long 1 0.05686826883245172 1.877034509249881 # c3-Ho
+pair_coeff 1 11 lj/cut/coul/long 1 0.135373557240696 3.198860937354702 # c3-Os
+pair_coeff 2 2 lj/cut/coul/long 1 0.093 3.242871334030835 # oh-oh
+pair_coeff 2 3 lj/cut/coul/long 1 0.04398181442369107 2.921524166397615 # oh-hc
+pair_coeff 2 4 lj/cut/coul/long 1 0.04398181442369107 2.832434294583581 # oh-h1
+pair_coeff 2 5 lj/cut/coul/long 1 0.02090693664791664 1.890397990021986 # oh-ho
+pair_coeff 2 6 lj/cut/coul/long 1 0.1008672394784352 3.321270421227185 # oh-Cg
+pair_coeff 2 7 lj/cut/coul/long 1 0.038211254886486 2.768022317262034 # oh-H2
+pair_coeff 2 8 lj/cut/coul/long 1 0.038211254886486 2.857112189076068 # oh-H1
+pair_coeff 2 9 lj/cut/coul/long 1 0.1398828080930605 3.154672360934941 # oh-Oh
+pair_coeff 2 10 lj/cut/coul/long 1 0.05282045058497703 1.799615410643485 # oh-Ho
+pair_coeff 2 11 lj/cut/coul/long 1 0.1257378224719992 3.121441838748307 # oh-Os
+pair_coeff 3 3 lj/cut/coul/long 1 0.0208 2.600176998764394 # hc-hc
+pair_coeff 3 4 lj/cut/coul/long 1 0.0208 2.51108712695036 # hc-h1
+pair_coeff 3 5 lj/cut/coul/long 1 0.009887365675446621 1.569050822388765 # hc-ho
+pair_coeff 3 6 lj/cut/coul/long 1 0.04770241084054348 2.999923253593964 # hc-Cg
+pair_coeff 3 7 lj/cut/coul/long 1 0.01807097119692242 2.446675149628814 # hc-H2
+pair_coeff 3 8 lj/cut/coul/long 1 0.01807097119692242 2.535765021442848 # hc-H1
+pair_coeff 3 9 lj/cut/coul/long 1 0.06615376028616968 2.833325193301721 # hc-Oh
+pair_coeff 3 10 lj/cut/coul/long 1 0.02497999199359359 1.478268243010265 # hc-Ho
+pair_coeff 3 11 lj/cut/coul/long 1 0.05946427498927402 2.800094671115086 # hc-Os
+pair_coeff 4 4 lj/cut/coul/long 1 0.0208 2.421997255136326 # h1-h1
+pair_coeff 4 5 lj/cut/coul/long 1 0.009887365675446621 1.479960950574732 # h1-ho
+pair_coeff 4 6 lj/cut/coul/long 1 0.04770241084054348 2.910833381779931 # h1-Cg
+pair_coeff 4 7 lj/cut/coul/long 1 0.01807097119692242 2.35758527781478 # h1-H2
+pair_coeff 4 8 lj/cut/coul/long 1 0.01807097119692242 2.446675149628814 # h1-H1
+pair_coeff 4 9 lj/cut/coul/long 1 0.06615376028616968 2.744235321487687 # h1-Oh
+pair_coeff 4 10 lj/cut/coul/long 1 0.02497999199359359 1.389178371196231 # h1-Ho
+pair_coeff 4 11 lj/cut/coul/long 1 0.05946427498927402 2.711004799301052 # h1-Os
+pair_coeff 5 5 lj/cut/coul/long 1 0.0047 0.5379246460131368 # ho-ho
+pair_coeff 5 6 lj/cut/coul/long 1 0.02267553747984819 1.968797077218336 # ho-Cg
+pair_coeff 5 7 lj/cut/coul/long 1 0.0085901105930017 1.415548973253185 # ho-H2
+pair_coeff 5 8 lj/cut/coul/long 1 0.0085901105930017 1.504638845067219 # ho-H1
+pair_coeff 5 9 lj/cut/coul/long 1 0.03144646244015374 1.802199016926092 # ho-Oh
+pair_coeff 5 10 lj/cut/coul/long 1 0.01187434208703792 0.4471420666346363 # ho-Ho
+pair_coeff 5 11 lj/cut/coul/long 1 0.02826658805020514 1.768968494739457 # ho-Os
+pair_coeff 6 6 lj/cut/coul/long 2 0.1094 3.399669508423535 # Cg-Cg
+pair_coeff 6 7 lj/cut/coul/long 2 0.04144369674630872 2.846421404458384 # Cg-H2
+pair_coeff 6 8 lj/cut/coul/long 2 0.04144369674630872 2.935511276272418 # Cg-H1
+pair_coeff 6 9 lj/cut/coul/long 2 0.1517160505681584 3.233071448131291 # Cg-Oh
+pair_coeff 6 10 lj/cut/coul/long 2 0.05728874234961001 1.878014497839835 # Cg-Ho
+pair_coeff 6 11 lj/cut/coul/long 2 0.1363744844169905 3.199840925944657 # Cg-Os
+pair_coeff 7 7 lj/cut/coul/long 2 0.0157 2.293173300493233 # H2-H2
+pair_coeff 7 8 lj/cut/coul/long 2 0.0157 2.382263172307267 # H2-H1
+pair_coeff 7 9 lj/cut/coul/long 2 0.05747416811055206 2.679823344166141 # H2-Oh
+pair_coeff 7 10 lj/cut/coul/long 2 0.0217025344142107 1.324766393874685 # H2-Ho
+pair_coeff 7 11 lj/cut/coul/long 2 0.05166236541235796 2.646592821979506 # H2-Os
+pair_coeff 8 8 lj/cut/coul/long 2 0.0157 2.471353044121301 # H1-H1
+pair_coeff 8 9 lj/cut/coul/long 2 0.05747416811055206 2.768913215980175 # H1-Oh
+pair_coeff 8 10 lj/cut/coul/long 2 0.0217025344142107 1.413856265688718 # H1-Ho
+pair_coeff 8 11 lj/cut/coul/long 2 0.05166236541235796 2.73568269379354 # H1-Os
+pair_coeff 9 9 lj/cut/coul/long 2 0.2104 3.066473387839048 # Oh-Oh
+pair_coeff 9 10 lj/cut/coul/long 2 0.07944809626416482 1.711416437547592 # Oh-Ho
+pair_coeff 9 11 lj/cut/coul/long 2 0.1891242977515052 3.033242865652413 # Oh-Os
+pair_coeff 10 10 lj/cut/coul/long 2 0.03 0.3563594872561358 # Ho-Ho
+pair_coeff 10 11 lj/cut/coul/long 2 0.07141428428542851 1.678185915360957 # Ho-Os
+pair_coeff 11 11 lj/cut/coul/long 2 0.17 3.000012343465778 # Os-Os
+
+# Bond Coefficients (deduplicated across all topologies and copies)
+bond_coeff 1 228.8900 1.5354  # c3-c3
+bond_coeff 2 285.1500 1.4242  # c3-oh
+bond_coeff 3 345.2500 1.0962  # c3-hc
+bond_coeff 4 344.2200 1.0969  # c3-h1
+bond_coeff 5 535.5100 0.9725  # oh-ho
+bond_coeff 6 320.0000 1.4300  # Cg-Oh
+bond_coeff 7 310.0000 1.5200  # Cg-Cg
+bond_coeff 8 285.0000 1.4600  # Cg-Os
+bond_coeff 9 553.0000 0.9600  # Oh-Ho
+bond_coeff 10 340.0000 1.0900  # Cg-H1
+
+# Angle Coefficients (deduplicated across all topologies and copies)
+angle_coeff 1 76.7900 109.6600  # c3-c3-oh
+angle_coeff 2 43.2800 109.5900  # c3-c3-h1
+angle_coeff 3 43.2700 109.6800  # c3-c3-hc
+angle_coeff 4 65.1300 107.3900  # c3-oh-ho
+angle_coeff 5 56.2900 110.3800  # oh-c3-h1
+angle_coeff 6 35.8000 107.7300  # hc-c3-hc
+angle_coeff 7 35.6400 108.5500  # h1-c3-h1
+angle_coeff 8 100.0000 112.0000  # Os-Cg-Oh
+angle_coeff 9 70.0000 108.5000  # Cg-Cg-Os
+angle_coeff 10 70.0000 107.5000  # Cg-Cg-Oh
+angle_coeff 11 45.0000 113.5000  # Cg-Cg-Cg
+angle_coeff 12 50.0000 111.6000  # Cg-Os-Cg
+angle_coeff 13 60.0000 110.0000  # H1-Cg-Oh
+angle_coeff 14 45.0000 109.5000  # H1-Cg-H1
+angle_coeff 15 55.0000 109.5000  # Cg-Oh-Ho
+angle_coeff 16 45.0000 111.0000  # H1-Cg-Cg
+
+# Dihedral Coefficients (deduplicated across all topologies and copies)
+dihedral_coeff 1 1 0.0600 3 0.0000  # c3-c3-oh-ho
+dihedral_coeff 2 1 0.0900 3 0.0000  # hc-c3-c3-oh
+dihedral_coeff 3 1 0.1556 3 0.0000  # hc-c3-c3-h1
+dihedral_coeff 4 1 0.1230 3 0.0000  # h1-c3-oh-ho
+dihedral_coeff 5 3 -0.1000 1 0.0000 0.5500 3 0.0000 0.9500 2 0.0000  # Oh-Cg-Cg-Oh
+dihedral_coeff 6 2 -1.1000 1 0.0000 0.2500 2 0.0000  # Os-Cg-Cg-Oh
+dihedral_coeff 7 1 0.1000 3 0.0000  # Cg-Cg-Cg-Oh
+dihedral_coeff 8 3 0.9600 3 0.0000 1.0800 1 0.0000 1.3800 2 0.0000  # Oh-Cg-Os-Cg
+dihedral_coeff 9 1 -0.2700 1 0.0000  # Os-Cg-Cg-Cg
+dihedral_coeff 10 1 0.4500 1 0.0000  # Cg-Cg-Cg-Cg
+dihedral_coeff 11 1 0.1600 3 0.0000  # Cg-Cg-Os-Cg
+dihedral_coeff 12 1 0.1800 3 0.0000  # Os-Cg-Oh-Ho
+dihedral_coeff 13 1 0.0500 3 0.0000  # H1-Cg-Cg-Os
+dihedral_coeff 14 1 0.1700 3 0.0000  # H1-Cg-Cg-H1
+dihedral_coeff 15 1 0.1500 3 0.0000  # H1-Cg-Cg-Cg
+dihedral_coeff 16 2 0.1000 3 0.0000 0.6000 2 0.0000  # H2-Cg-Os-Cg
+dihedral_coeff 17 1 0.2700 3 0.0000  # Cg-Os-Cg-H1

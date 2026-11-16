@@ -1,0 +1,10 @@
+source leaprc.GLYCAM_06j-1
+
+# 0GA is alpha-D-glucopyranose in GLYCAM nomenclature. ROH caps its reducing
+# end, yielding a neutral standalone glucose molecule.
+glucose = sequence { 0GA ROH }
+bond glucose.1.C1 glucose.2.O1
+check glucose
+saveamberparm glucose glucose.prmtop glucose.rst7
+savepdb glucose glucose.pdb
+quit

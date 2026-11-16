@@ -43,4 +43,4 @@ Issues = "https://github.com/askforarun/AMBER2LAMMPS/issues"
 DOI = "https://doi.org/10.5281/zenodo.18114886"
 
 [tool.setuptools]
-py-modules = ["amber_to_lammps", "amber_to_lammps_mcp"]
+py-modules = ["amber_to_lammps", "amber_to_lammps_mcp", "amber_to_lammps_provenance"]

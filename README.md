@@ -1,13 +1,18 @@
 <div align="center">
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
-  <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
-  <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 InterMol energy validation ✨</strong></p>
-  <p><strong>🤖 NEW MCP server · 🛡️ 32 regression tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
+  <h3>Convert once. Prove exactly what happened. Share only the context an AI needs.</h3>
+  <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
+  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 55 automated tests · ⚡ Cached scientific CI</strong></p>
 </div>
 
 ---
 
 # Overview
+
+**AMBER2LAMMPS is a validated, provenance-aware, and agent-ready framework for
+AMBER-family simulations in LAMMPS.** Agent-ready means that external agents
+can use bounded MCP conversion and validation tools with compact structured
+responses; it does not mean that an LLM is embedded in the converter.
 
 ![AMBER2LAMMPS converts AMBER prmtop and PDB inputs into LAMMPS data and parameter files](6ce0db32-87a0-4a12-ab3d-44768ded7021.png)
 
@@ -16,7 +21,7 @@
 [![AMBER2LAMMPS demo: CLI, MCP server, conversion, and validation](docs/media/amber2lammps-demo.gif)](docs/media/amber2lammps-demo.mp4)
 
 Click the animated preview to open the full MP4. The demo covers PyPI installation, CLI conversion,
-the MCP server for Claude and Codex, generated LAMMPS files, and InterMol energy validation.
+the MCP server for Claude and Codex, generated LAMMPS files, and direct AMBER `sander` validation.
 
 Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter formats through CLI or Python API, featuring validation-first error handling. **Can handle multiple AMBER topology files for mixed molecular systems (e.g., drug + solvent mixtures).**
 
@@ -27,6 +32,7 @@ Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter 
 - **✅ Validation-First**: Clear errors for missing files, mismatched list lengths, and PDB atom-count/order issues
 - **🔄 CLI + Python API**: Same conversion engine from the command line or `amber2lammps(...)` in Python
 - **🤖 MCP Server**: Let Claude, Codex, and other MCP clients run local conversions through a structured tool
+- **🧾 Provenance-first automation**: Record hashes, versions, force-field decisions, charge adjustments, and output summaries once; MCP clients receive a compact summary instead of consuming large topology and log files
 - **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file, grouped by topology
 
 ## What This Tool Does
@@ -47,6 +53,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 
 ## Table of Contents
 - [Open Source](#open-source)
+- [Research scope and evidence](#research-scope-and-evidence)
 - [Citation](#citation)
 - [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
@@ -64,7 +71,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
   - [Python API with LAMMPS execution](#python-api-with-lammps-execution)
     - [Additional API examples](#additional-api-examples)
   - [Multiple Copies and Mixed Molecular System Workflow](#multiple-copies-and-mixed-molecular-system-workflow)
-- [Validation with InterMol](#validation-with-intermol)
+- [Validation with sander and InterMol](#validation-with-sander-and-intermol)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
@@ -72,6 +79,26 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 
 This is an open-source project. The source code is freely available for use, modification, and
 distribution under the MIT License.
+
+## Research scope and evidence
+
+AMBER2LAMMPS targets reusable conversion of classical, fixed-charge
+AMBER-family molecular models; it is not a generic converter for unrelated
+LAMMPS potentials. Current references include a heterogeneous GAFF2 + GLYCAM
+system and an ff14SB peptide in explicit TIP3P water with Na+/Cl-. Both are
+compared directly with AmberTools `sander` for energy components and all
+Cartesian forces.
+
+- [Supported-system and validation matrix](docs/support-matrix.md)
+- [Scientific mapping and extension model](docs/scientific-design.md)
+- [Reproducible `sander` validation](validation/amber_family_mix/README.md)
+- [Standalone GLYCAM06j-1 `sander` validation](validation/glycam_glucose/README.md)
+- [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
+- [AMBER-family development roadmap](docs/amber-family-roadmap.md)
+- [Research-use and adoption record](docs/research-use.md)
+- [Contribution requirements](CONTRIBUTING.md)
+- [Governance and support expectations](GOVERNANCE.md)
+- [Release changelog](CHANGELOG.md)
 
 ## Citation
 
@@ -91,7 +118,7 @@ Tested and validated on:
 - **Structure input**: A PDB file of the molecular structure (or a SMILES string that you convert to PDB; see workflow below). For mixed systems, use a combined PDB file from PACKMOL containing all molecules.
 - **AMBER prep**: AmberTools (`antechamber`, `tleap`) to generate `.prmtop`. For mixed systems, generate separate `.prmtop` files for each molecule type.
 - **Python**: Python 3.9+ with `parmed` and `numpy`.
-- **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE` packages on your `PATH` (`lmp -h` to confirm).
+- **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE`; explicit-water dynamics examples also require `RIGID` for `fix shake` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
 
@@ -139,10 +166,41 @@ Configure an MCP client to launch the installed stdio server:
 }
 ```
 
-The server exposes a `convert` tool accepting PDB/topology input paths, molecule counts, target
-charges, output paths, and the converter's main options. It writes files only to the paths supplied
-in the tool call. Existing files at the selected data and parameter paths are replaced, so review
-those paths before approving a conversion.
+The server exposes two tools:
+
+- `convert` accepts PDB/topology paths, molecule counts, target charges, output paths, and the main
+  converter options. Its default `detail="summary"` response uses short relative paths, compact
+  warning codes, and a `lammps` setup block describing the include file, `special_bonds`, whether the
+  include sets `pair_style`, and required LAMMPS packages. Use `detail="full"` only when the complete
+  provenance record and human-readable converter messages are needed.
+- `check_lammps_run0` executes a bounded LAMMPS `run 0`, verifies the data and parameter hashes
+  first, and returns only energy terms and a compact error. The generated input and complete LAMMPS
+  output stay on disk and the validation result is added to provenance. Configure the executable
+  when starting the server, for example `AMBER2LAMMPS_LAMMPS=/path/to/lmp`.
+
+Outputs are confined to `AMBER2LAMMPS_MCP_ROOT` (the server working directory by default), and
+existing files are refused unless the tool call explicitly sets `overwrite=true`. Every conversion
+writes a versioned `<data-stem>.provenance.json` record. Conversion and validation calls are
+serialized so concurrent requests cannot mix messages or overwrite one another. These defaults let
+an AI client convert and validate a system without loading large topology, data, or log files into
+its context.
+
+### Reproducible provenance
+
+The CLI can write the same machine-readable record used by MCP:
+
+```bash
+amber-to-lammps system.data system.parm system.pdb \
+  -t ligand.prmtop -c 1 --charges 0 \
+  --provenance system.provenance.json
+```
+
+The record includes input/output SHA-256 hashes, software versions, topology counts, raw and target
+charges, detected SCEE/SCNB profiles, nonbonded strategy, box dimensions, conversion warnings, and
+the LAMMPS execution contract.
+It deliberately reports validation as `not_run`: a successful conversion is not by itself evidence
+of agreement with AMBER `sander`. The schema is published at
+[`docs/provenance.schema.json`](docs/provenance.schema.json).
 
 ### PACKMOL 
 
@@ -217,9 +275,11 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 | `-b, --buffer` | optional | Vacuum padding (Å) when the PDB has no usable `CRYST1` cell. Default: `3.8`. |
 | `--verbose` | optional | Print step-by-step progress, counts, and box size. Default: `False`. |
 | `--keep-temp` | optional | Write debug files `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file (`<stem>` is the data file path without its extension), grouped by topology. Default: `False`. |
-| `--c4-cutoff` | optional | LJ/Coulomb/Lepton cutoff used for 12-6-4 output. Default: `9.0` Å. |
-| `--c4-coulomb` | optional | Coulomb style for 12-6-4 output: `long` or `cut`. Default: `long`. |
+| `--nonbonded-cutoff` | optional | Cutoff used by generated mixed-scaling and 12-6-4 pair styles. Default: `9.0` Å. Legacy alias: `--c4-cutoff`. |
+| `--nonbonded-coulomb` | optional | Coulomb style used by generated mixed-scaling and 12-6-4 pair styles: `long` or `cut`. Default: `long`. Legacy alias: `--c4-coulomb`. |
 | `--typelabels` | optional | Write LAMMPS atom and bonded type labels. Chemically distinct bonded types remain separate even when their parameters match. Invalid leading characters and whitespace in AMBER names are rewritten to valid, unique labels. Default: `False`. |
+| `--allow-pdb-name-mismatch` | optional | Skip PDB/topology atom identity checks. This is unsafe and should be used only after independently verifying atom order. Default: `False`. |
+| `--provenance FILE` | optional | Write versioned JSON provenance with input/output hashes and conversion decisions. |
 | `-h, --help` | optional | Show help message. |
 
 ## How It Works
@@ -227,11 +287,12 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 1. **Input validation**: `validate_files` checks that `topologies`, `counts`, and `pdb_file` exist and lengths match. CLI does this automatically; Python API requires calling it yourself.
 2. **Load topology and parameters**: ParmEd reads atoms, bonds, angles, dihedrals, masses, and LJ parameters directly from each `.prmtop` (supports multiple topologies).
 3. **Atom types and masses**: Each distinct combination of AMBER type name, LJ parameters, and mass becomes one LAMMPS type. Atoms that share a type name but differ in mass (e.g. hydrogen mass repartitioning) or LJ parameters (conflicts across topologies) get suffixed types such as `c3_top1`. Atoms whose type cannot be resolved stop the conversion with an error.
-4. **Coordinates and box**: Coordinates come from the combined PDB. A valid orthogonal `CRYST1` record sets the box to `0…L` and overrides `--buffer`; coordinates outside those bounds rely on periodic LAMMPS boundaries to wrap them into the cell. Placeholder 1×1×1 cells are ignored, and a missing or unreadable record falls back to coordinate min/max expanded by `buffer`. Non-orthogonal cells and cells smaller than the coordinate span stop with a clear error.
+4. **Coordinates, identity and box**: Coordinates come from the combined PDB. The sequential PDB atom names are checked against the topology assignment; bare element names remain compatible with generic Open Babel/Packmol output. A mismatch stops before output is written unless the unsafe override is explicitly selected. A valid orthogonal `CRYST1` record sets the box to `0…L` and overrides `--buffer`; coordinates outside those bounds rely on periodic LAMMPS boundaries to wrap them into the cell. Placeholder 1×1×1 cells are ignored, and a missing or unreadable record falls back to coordinate min/max expanded by `buffer`. Non-orthogonal cells and cells smaller than the coordinate span stop with a clear error.
 5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules. A warning is always printed when the correction exceeds 0.01 e per molecule.
-6. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package.
-7. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes the connectivity rows (`Bonds`/`Angles`/`Dihedrals` sections) for all replicas, referencing the pre-computed type IDs. This means bond/angle/dihedral type counts stay constant regardless of how many copies (`-c N`) are used.
-8. **Export**: Data/parameter files are written. Only when `--keep-temp` is set, debug files are written beside the data file with its stem as a prefix (e.g. `results/system.data` → `results/system.pairs.txt`, `results/system.bonds.txt`, ...). Bare `pairs.txt`, `bonds.txt`, `angles.txt`, or `dihedrals.txt` files in the working directory are never touched. Like the data and parameter files, re-running with the same data file name replaces that run's previous debug files; the conversion stops before writing anything if a debug file name would coincide with the parameter file.
+6. **AMBER 1–4 scaling**: Active proper-dihedral SCEE and SCNB values are read from each topology. A uniform profile becomes one `special_bonds` command. A non-covalent mixture with different profiles, such as GAFF2 plus GLYCAM, uses repeated instances of `pair_style hybrid`, profile-specific `pair_modify ... special` settings, and an explicit complete I–J coefficient matrix. Improper and repeated-term placeholders do not define scaling. Mixed scaling with 12-6-4 terms is rejected because that combination is not yet implemented.
+7. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package. Multiple independent topology files containing C4 terms are rejected because their cross-topology C4 interactions are undefined; use one combined parameterized topology or a separately validated explicit model.
+8. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. ParmEd dihedral phases are consumed in their documented degree unit. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes non-empty connectivity sections for all replicas, referencing the pre-computed type IDs; empty sections are omitted so water-, ion-, and other small systems remain valid LAMMPS data files.
+9. **Export**: Data/parameter files are written. Only when `--keep-temp` is set, debug files are written beside the data file with its stem as a prefix (e.g. `results/system.data` → `results/system.pairs.txt`, `results/system.bonds.txt`, ...). Bare `pairs.txt`, `bonds.txt`, `angles.txt`, or `dihedrals.txt` files in the working directory are never touched. Like the data and parameter files, re-running with the same data file name replaces that run's previous debug files; the conversion stops before writing anything if a debug file name would coincide with the parameter file.
 
 ### 12-6-4 and pair-specific Lennard-Jones parameters
 
@@ -431,6 +492,20 @@ for mol in molecules:
 
 For systems containing multiple molecule types (e.g., drug + solvent mixtures), use the following workflow.
 
+### Validated GAFF2 + GLYCAM mixed scaling
+
+GAFF2 normally uses SCEE/SCNB 1.2/2.0, while GLYCAM uses 1.0/1.0. The converter detects those values from the topologies and generates two instances of `lj/cut/coul/long` under `pair_style hybrid`. Like-profile interactions use their own instance; cross-family nonbonded interactions use explicit Lorentz–Berthelot coefficients. Do not replace the generated `pair_style`, `pair_modify`, `special_bonds`, or `pair_coeff` commands in the parameter include.
+
+Mixed-profile conversion requires each force-field family to remain a separate
+topology template, as in `--topologies ligand.prmtop carbohydrate.prmtop`.
+A single combined `prmtop` containing multiple active SCEE/SCNB profiles is
+rejected because one topology cannot be assigned multiple global
+`special_bonds` behaviors safely. Separate topology templates also mean there
+is no covalent cross-family 1-4 path; covalently linked cross-family systems
+remain unsupported until validated independently.
+
+A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. A separate [`validation/glycam_glucose/`](validation/glycam_glucose/README.md) fixture validates standalone GLYCAM06j-1 glucose. The ff14SB/TIP3P/NaCl fixture covers a capped protein, explicit solvent and ions. The precise supported scope and remaining combinations are listed in the support matrix.
+
 ### Mixed Molecular System (Multiple Topologies)
 
 #### 1. Prepare Individual Molecules
@@ -599,16 +674,29 @@ amber2lammps(
 subprocess.run("lmp < test_mixed_system.in", shell=True)
 ```
 
-## Validation with InterMol
+## Validation with sander and InterMol
+
+The required GitHub Actions reference check uses AmberTools **`sander`** as the
+AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 + GLYCAM mixture, and the
+ff14SB/TIP3P/NaCl system, runs each engine on identical coordinates and cells,
+and compares bonded, van der Waals, electrostatic and total energies plus every
+Cartesian force component. Complete runnable fixtures and explicit tolerances
+are in [`validation/glycam_glucose/`](validation/glycam_glucose/README.md),
+[`validation/amber_family_mix/`](validation/amber_family_mix/README.md), and
+[`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md).
+
+InterMol remains a useful secondary converter-to-converter cross-check and its
+reproducible epon bundle is retained, but it is no longer the required
+scientific reference job.
 
 Conversion results have been cross-checked with **InterMol**.
 
-The GitHub Actions CI regenerates both the InterMol and AMBER2LAMMPS epon outputs, runs both with
-LAMMPS in the same simulation cell, and checks each reported energy component against an explicit
-tolerance. InterMol is pinned to a tested commit so upstream changes cannot silently alter the
-validation baseline. Both converters preserve epon's raw topology charge during this comparison,
-so charge normalization cannot mask or create electrostatic differences. The nonbonded and total
-energy tolerances are `1e-4` kcal/mol; bonded tolerances are equal or tighter.
+The retained InterMol script regenerates both the InterMol and AMBER2LAMMPS
+epon outputs, runs both with LAMMPS in the same simulation cell, and checks each
+reported energy component against an explicit tolerance. InterMol is pinned to
+a tested commit when this optional comparison is run. Both converters preserve
+epon's raw topology charge, so charge normalization cannot mask or create
+electrostatic differences.
 
 The complete, runnable validation set is in
 [`validation/intermol_epon/`](validation/intermol_epon/README.md). It includes both tools' LAMMPS
@@ -636,11 +724,10 @@ comparison used by CI.
 
 ## Contributing
 
-When making changes:
-1. Create a branch: `git checkout -b feature-name`
-2. Implement the change
-3. Test with varied inputs
-4. Commit and push
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and the
+scientific evidence required for force-field or interaction changes. Project
+decisions, releases and support expectations are documented in
+[GOVERNANCE.md](GOVERNANCE.md).
 
 ## Acknowledgements
 

@@ -3,20 +3,32 @@
 import contextlib
 import copy
 import io
+import json
 import os
 import shutil
 import tempfile
+import types
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from unittest import mock
 
 import parmed as pmd
 
 import amber_to_lammps as a2l
 import amber_to_lammps_mcp as a2l_mcp
+import amber_to_lammps_provenance as a2l_provenance
 from amber_to_lammps import amber2lammps
+from validation.amber_protein_water_ions.prepare_shake_data import prepare as prepare_shake_data
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ETHANOL_PRMTOP = os.path.join(HERE, "ethanol.prmtop")
 ETHANOL_PDB = os.path.join(HERE, "ethanol.pdb")
+GLYCAM_PRMTOP = os.path.join(
+    HERE, "validation", "amber_family_mix", "source", "glucose.prmtop"
+)
+MIXTURE_PDB = os.path.join(
+    HERE, "validation", "amber_family_mix", "source", "ethanol_glucose.pdb"
+)
 DEBUG_FILES = ("pairs.txt", "bonds.txt", "angles.txt", "dihedrals.txt")
 
 
@@ -58,7 +70,7 @@ class ConversionTestCase(unittest.TestCase):
 class McpConversionTests(ConversionTestCase):
     """The MCP-facing helper validates inputs and uses the conversion engine."""
 
-    def test_mcp_helper_converts_and_returns_absolute_outputs(self):
+    def test_mcp_helper_returns_compact_relative_outputs_and_contract(self):
         result = a2l_mcp.convert_amber_system(
             pdb_file=ETHANOL_PDB,
             topologies=[ETHANOL_PRMTOP],
@@ -69,16 +81,48 @@ class McpConversionTests(ConversionTestCase):
             type_labels=True,
         )
         self.assertEqual(result["status"], "success")
-        self.assertEqual(
-            os.path.realpath(result["data_file"]),
-            os.path.realpath(os.path.join(self.tmp, "mcp.data")),
+        self.assertEqual(result["files"]["data"], "mcp.data")
+        self.assertEqual(result["files"]["parameters"], "mcp.parm")
+        self.assertEqual(result["files"]["provenance"], "mcp.provenance.json")
+        self.assertTrue(os.path.isfile(result["files"]["data"]))
+        self.assertEqual(result["atoms"], 9)
+        self.assertEqual(result["validation_status"], "not_run")
+        self.assertEqual(result["lammps"]["atom_style"], "full")
+        self.assertIn("KSPACE", result["lammps"]["required_packages"])
+        self.assertNotIn("provenance", result)
+        self.assertNotIn("messages", result)
+
+    def test_mcp_full_detail_returns_record_and_messages(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[1], data_file="full.data", parameter_file="full.parm",
+            detail="full",
         )
-        self.assertEqual(
-            os.path.realpath(result["parameter_file"]),
-            os.path.realpath(os.path.join(self.tmp, "mcp.parm")),
+        self.assertEqual(result["provenance"]["conversion"]["counts"]["atoms"], 9)
+        self.assertTrue(any("--charges requests" in line for line in result["messages"]))
+        self.assertEqual(result["warnings"][0]["code"], "large_charge_adjustment")
+
+    def test_provenance_records_hashes_without_claiming_validation(self):
+        amber2lammps(
+            "out.data", "out.parm", [ETHANOL_PRMTOP], [1], ETHANOL_PDB, [0],
+            provenance_file="out.provenance.json",
         )
-        self.assertTrue(os.path.isfile(result["data_file"]))
-        self.assertTrue(os.path.isfile(result["parameter_file"]))
+        with open("out.provenance.json", encoding="utf-8") as stream:
+            record = json.load(stream)
+        self.assertEqual(record["schema_version"], "1.0")
+        self.assertEqual(record["conversion"]["status"], "success")
+        self.assertEqual(record["conversion"]["counts"]["atoms"], 9)
+        self.assertEqual(record["validation"]["status"], "not_run")
+        self.assertEqual(len(record["inputs"]["pdb"]["sha256"]), 64)
+        self.assertEqual(len(record["outputs"]["lammps_data"]["sha256"]), 64)
+
+    def test_provenance_cannot_overwrite_inputs_or_outputs(self):
+        with self.assertRaisesRegex(ValueError, "must not overwrite"):
+            amber2lammps(
+                "out.data", "out.parm", [ETHANOL_PRMTOP], [1], ETHANOL_PDB, [0],
+                provenance_file="out.data",
+            )
+        self.assertFalse(os.path.exists("out.data"))
 
     def test_mcp_helper_rejects_mismatched_lists_before_writing(self):
         with self.assertRaisesRegex(ValueError, "must have the same length"):
@@ -91,6 +135,258 @@ class McpConversionTests(ConversionTestCase):
                 parameter_file="mcp.parm",
             )
         self.assertFalse(os.path.exists("mcp.data"))
+
+    def test_mcp_rejects_outputs_outside_workspace(self):
+        with self.assertRaisesRegex(ValueError, "outside the MCP workspace"):
+            a2l_mcp.convert_amber_system(
+                pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+                charges=[0], data_file=os.path.join(self.old_cwd, "escape.data"),
+                parameter_file="safe.parm",
+            )
+
+    def test_mcp_requires_explicit_overwrite(self):
+        first = dict(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="mcp.data", parameter_file="mcp.parm",
+        )
+        a2l_mcp.convert_amber_system(**first)
+        with self.assertRaisesRegex(FileExistsError, "overwrite=true"):
+            a2l_mcp.convert_amber_system(**first)
+        a2l_mcp.convert_amber_system(**first, overwrite=True)
+
+    def test_concurrent_mcp_calls_keep_messages_isolated(self):
+        def convert(index):
+            return a2l_mcp.convert_amber_system(
+                pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+                charges=[index + 1], data_file=f"mcp-{index}.data",
+                parameter_file=f"mcp-{index}.parm",
+            )
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(convert, range(4)))
+        for index, result in enumerate(results):
+            self.assertEqual(len(result["warnings"]), 1)
+            self.assertAlmostEqual(
+                result["warnings"][0]["delta_e"], index + 1.0, places=4
+            )
+
+    def test_run0_helper_returns_compact_energies_and_updates_provenance(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="run.data", parameter_file="run.parm",
+        )
+        executable = os.path.join(self.tmp, "fake-lmp")
+        with open(executable, "w", encoding="utf-8") as stream:
+            stream.write("#!/bin/sh\n")
+        os.chmod(executable, 0o700)
+        output = "E_bond E_angle E_dihed E_vdwl E_coul E_long PotEng\n1 2 3 4 5 6 21\n"
+        completed = types.SimpleNamespace(returncode=0, stdout=output)
+        with mock.patch.object(a2l_mcp.subprocess, "run", return_value=completed):
+            checked = a2l_mcp._check_lammps_run0(
+                result["files"]["provenance"], lammps_executable=executable
+            )
+        self.assertEqual(checked["status"], "passed")
+        self.assertEqual(checked["energies_kcal_mol"]["potential"], 21.0)
+        self.assertNotIn("output", checked)
+        with open(result["files"]["provenance"], encoding="utf-8") as stream:
+            provenance = json.load(stream)
+        self.assertEqual(provenance["validation"]["status"], "passed")
+        self.assertTrue(os.path.isfile(checked["files"]["log"]))
+
+    def test_run0_helper_rejects_modified_conversion_output(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="changed.data", parameter_file="changed.parm",
+        )
+        with open("changed.data", "a", encoding="utf-8") as stream:
+            stream.write("# changed\n")
+        with self.assertRaisesRegex(ValueError, "differs from provenance"):
+            a2l_mcp._check_lammps_run0(result["files"]["provenance"])
+
+    def test_provenance_source_control_rejects_enclosing_repository(self):
+        completed = types.SimpleNamespace(stdout="/unrelated/project\n")
+        with mock.patch.object(a2l_provenance.subprocess, "run", return_value=completed):
+            source = a2l_provenance.source_control()
+        self.assertIsNone(source["commit"])
+        self.assertIsNone(source["dirty"])
+
+
+class Tip3pShakePreparationTests(ConversionTestCase):
+    """AMBER water triangles become the topology required by LAMMPS SHAKE."""
+
+    def test_hh_bonds_become_hoh_angles(self):
+        fixture = os.path.join(HERE, "validation", "amber_protein_water_ions", "amber2lammps")
+        count = prepare_shake_data(
+            os.path.join(fixture, "system.data"),
+            os.path.join(fixture, "system.parm"),
+            "shake.data", "shake.parm",
+        )
+        self.assertEqual(count, 380)
+        sections = read_sections("shake.data")
+        self.assertFalse(any(line.split()[1] == "9" for line in sections["Bonds"]))
+        self.assertEqual(
+            sum(line.split()[1] == "12" for line in sections["Angles"]), 380
+        )
+        with open("shake.parm") as stream:
+            self.assertIn("angle_coeff 12 0.0000 104.490", stream.read())
+
+
+class AmberFamilyScalingTests(ConversionTestCase):
+    """AMBER SCEE/SCNB values are detected and translated fail-closed."""
+
+    def test_standard_amber_scaling_is_read_from_active_dihedrals(self):
+        parm = pmd.load_file(ETHANOL_PRMTOP)
+        scaling = a2l.topology_14_scaling(parm, "ethanol")
+        self.assertEqual(scaling, a2l.SpecialBondScaling(scee=1.2, scnb=2.0))
+        self.assertAlmostEqual(scaling.coulomb_weight, 1.0 / 1.2)
+        self.assertAlmostEqual(scaling.lj_weight, 0.5)
+
+    def test_multiple_active_profiles_inside_one_topology_fail_closed(self):
+        term_gaff = types.SimpleNamespace(scee=1.2, scnb=2.0)
+        term_glycam = types.SimpleNamespace(scee=1.0, scnb=1.0)
+        parm = types.SimpleNamespace(dihedrals=[
+            types.SimpleNamespace(improper=False, ignore_end=False, type=term_gaff),
+            types.SimpleNamespace(improper=False, ignore_end=False, type=term_glycam),
+        ])
+        with self.assertRaisesRegex(
+            a2l.UnsupportedScalingError,
+            "combined.prmtop uses multiple active 1-4 scaling profiles",
+        ):
+            a2l.topology_14_scaling(parm, "combined.prmtop")
+
+    def test_mixed_scaling_with_c4_fails_closed(self):
+        context = types.SimpleNamespace(has_c4=True)
+        with self.assertRaisesRegex(
+            a2l.UnsupportedScalingError,
+            "mixed SCEE/SCNB profiles with 12-6-4",
+        ):
+            a2l.build_mixed_scaling_pair_coeff_lines(context, 9.0, "long")
+
+    def test_cross_profile_pairs_use_fractional_baseline_instance(self):
+        glycam = a2l.SpecialBondScaling(scee=1.0, scnb=1.0)
+        gaff = a2l.SpecialBondScaling(scee=1.2, scnb=2.0)
+        context = types.SimpleNamespace(
+            has_c4=False,
+            scaling_profiles=[glycam, gaff],
+            atom_type_mapping={"Cg": 1, "c3": 2},
+            type_scaling_profiles={"Cg": glycam, "c3": gaff},
+            nonbonded_params={
+                "Cg": {"lj_epsilon": 0.1, "lj_sigma": 3.4},
+                "c3": {"lj_epsilon": 0.2, "lj_sigma": 3.2},
+            },
+            raw_pair_params={},
+        )
+        lines = a2l.build_mixed_scaling_pair_coeff_lines(context, 9.0, "long")
+        cross = next(line for line in lines if line.endswith("# Cg-c3"))
+        self.assertIn("lj/cut/coul/long 2", cross)
+
+    def test_improper_zero_placeholders_do_not_define_scaling(self):
+        parm = pmd.load_file(os.path.join(HERE, "epon.prmtop"))
+        scaling = a2l.topology_14_scaling(parm, "epon")
+        self.assertEqual(scaling, a2l.SpecialBondScaling(scee=1.2, scnb=2.0))
+
+    def test_mixed_gaff_and_glycam_style_scaling_has_no_global_profile(self):
+        profiles = [
+            a2l.SpecialBondScaling(scee=1.2, scnb=2.0),
+            a2l.SpecialBondScaling(scee=1.0, scnb=1.0),
+        ]
+        self.assertIsNone(
+            a2l.resolve_system_14_scaling(profiles, ["ligand.prmtop", "sugar.prmtop"])
+        )
+        self.assertEqual(a2l.distinct_14_scaling_profiles(profiles), profiles)
+
+    def test_parameter_file_emits_topology_derived_special_bonds(self):
+        self.convert()
+        with open("out.parm") as stream:
+            parameters = stream.read()
+        self.assertIn(
+            "special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333",
+            parameters,
+        )
+        self.assertIn("pair_modify mix arithmetic", parameters)
+
+    def test_gaff2_glycam_mixture_uses_hybrid_profiles_and_complete_matrix(self):
+        amber2lammps(
+            "mixed.data",
+            "mixed.parm",
+            [ETHANOL_PRMTOP, GLYCAM_PRMTOP],
+            [1, 1],
+            MIXTURE_PDB,
+            [0.0000010021786493, 0.0],
+        )
+        with open("mixed.parm") as stream:
+            parameters = stream.read()
+
+        self.assertIn(
+            "pair_style hybrid lj/cut/coul/long 9 9 lj/cut/coul/long 9 9",
+            parameters,
+        )
+        self.assertIn(
+            "pair_modify pair lj/cut/coul/long 1 special lj 0.0 0.0 0.5 "
+            "special coul 0.0 0.0 0.8333333333",
+            parameters,
+        )
+        self.assertIn(
+            "pair_modify pair lj/cut/coul/long 2 special lj 0.0 0.0 1 "
+            "special coul 0.0 0.0 1",
+            parameters,
+        )
+        # Eleven atom types require 11 * 12 / 2 explicit I-J assignments.
+        self.assertEqual(parameters.count("\npair_coeff "), 66)
+
+    def test_exact_combined_pdb_count_does_not_emit_false_warning(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            amber2lammps(
+                "mixed.data",
+                "mixed.parm",
+                [ETHANOL_PRMTOP, GLYCAM_PRMTOP],
+                [1, 1],
+                MIXTURE_PDB,
+                [0.0000010021786493, 0.0],
+            )
+        self.assertNotIn("but multi-mode expects", output.getvalue())
+
+    def test_cross_topology_c4_fails_closed(self):
+        context = types.SimpleNamespace(has_c4=True)
+        with self.assertRaisesRegex(a2l.UnsupportedNonbondedError, "cross-topology C4"):
+            a2l.validate_cross_topology_c4(context, ["ion.prmtop", "water.prmtop"])
+
+    def test_small_dihedral_phase_remains_degrees(self):
+        self.assertEqual(a2l.dihedral_phase_degrees(types.SimpleNamespace(phase=3.0)), 3.0)
+
+
+class PdbIdentityAndEmptySectionTests(ConversionTestCase):
+    def test_reordered_named_atoms_fail_before_outputs_are_written(self):
+        bad_pdb = os.path.join(self.tmp, "bad-order.pdb")
+        with open(ETHANOL_PDB) as source:
+            lines = source.readlines()
+        atom_indices = [i for i, line in enumerate(lines) if line.startswith(("ATOM", "HETATM"))]
+        first, oxygen = atom_indices[0], atom_indices[2]
+        lines[first] = lines[first][:12] + " O  " + lines[first][16:]
+        lines[oxygen] = lines[oxygen][:12] + " C  " + lines[oxygen][16:]
+        with open(bad_pdb, "w") as target:
+            target.writelines(lines)
+        with self.assertRaisesRegex(ValueError, "names/order do not match"):
+            amber2lammps(
+                "bad.data", "bad.parm", [ETHANOL_PRMTOP], [1], bad_pdb, [0]
+            )
+        self.assertFalse(os.path.exists("bad.data"))
+        amber2lammps(
+            "allowed.data", "allowed.parm", [ETHANOL_PRMTOP], [1], bad_pdb, [0],
+            allow_pdb_name_mismatch=True,
+        )
+
+    def test_empty_connectivity_sections_are_omitted(self):
+        parm = pmd.amber.AmberParm(ETHANOL_PRMTOP)
+        parm.dihedrals.clear()
+        topology = os.path.join(self.tmp, "no-dihedrals.prmtop")
+        parm.write_parm(topology)
+        self.convert(topology=topology, use_typelabels=True)
+        with open("out.data") as stream:
+            data = stream.read()
+        self.assertNotIn("\nDihedrals ", data)
+        self.assertNotIn("\nDihedral Type Labels", data)
 
 
 class PdbBoxTests(ConversionTestCase):

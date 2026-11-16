@@ -1,0 +1,24 @@
+units real
+atom_style full
+boundary p p p
+# Match AMBER's electrostatic conversion factor (332.0522173) to the
+# LAMMPS real-units factor (332.06371).
+dielectric 1.0000346111225924
+
+bond_style harmonic
+angle_style harmonic
+dihedral_style fourier
+
+read_data ethanol_glucose.data
+
+# The generated include configures pair_style hybrid, profile-specific 1-4
+# scaling, the complete I-J matrix, and all bonded coefficients.
+include ethanol_glucose.parm
+pair_modify table 0
+kspace_style ewald 1.0e-8
+kspace_modify gewald 0.42001
+
+thermo_style custom ebond eangle edihed eimp evdwl ecoul elong etail pe
+dump validation_forces all custom 1 lammps_forces.dump id fx fy fz
+dump_modify validation_forces sort id
+run 0

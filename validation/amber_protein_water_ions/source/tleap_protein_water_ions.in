@@ -1,0 +1,15 @@
+source leaprc.protein.ff14SB
+source leaprc.water.tip3p
+
+# A capped peptide provides protein bonded terms while remaining small enough
+# for a fast energy-and-force validation job.
+solute = sequence { ACE ALA NME }
+solvatebox solute TIP3PBOX 8.0
+
+# Add a neutral salt pair explicitly so both monovalent ion types are tested.
+addionsrand solute Na+ 1 Cl- 1
+
+check solute
+saveamberparm solute system.prmtop system.rst7
+savepdb solute system.pdb
+quit

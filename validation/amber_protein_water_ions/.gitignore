@@ -1,0 +1,10 @@
+source/leap.log
+source/system.rst7
+sander/reference.prmtop
+sander/reference.rst7
+sander/sander.mdfrc
+sander/sander_force.mdinfo
+sander/sander_force.out
+sander/sander_force.rst7
+amber2lammps/lammps_forces.dump
+amber2lammps/system.log

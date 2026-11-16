@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/askforarun/AMBER2LAMMPS/main/docs/provenance.schema.json",
+  "title": "AMBER2LAMMPS conversion provenance",
+  "type": "object",
+  "required": ["schema_version", "software", "inputs", "conversion", "lammps", "outputs", "validation"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "recorded_at_utc": {"type": "string", "format": "date-time"},
+    "software": {"type": "object"},
+    "invocation": {"type": "object"},
+    "inputs": {"type": "object"},
+    "conversion": {
+      "type": "object",
+      "required": ["status", "nonbonded_strategy", "counts", "warnings"],
+      "properties": {
+        "status": {"const": "success"},
+        "nonbonded_strategy": {"type": "string"},
+        "counts": {"type": "object"},
+        "warnings": {"type": "array"}
+      }
+    },
+    "lammps": {
+      "type": "object",
+      "required": ["atom_style", "include", "sets_pair_style", "special_bonds", "required_packages", "requires_kspace"],
+      "properties": {
+        "atom_style": {"const": "full"},
+        "include": {"type": "string"},
+        "sets_pair_style": {"type": "boolean"},
+        "special_bonds": {"type": ["string", "null"]},
+        "required_packages": {"type": "array", "items": {"type": "string"}},
+        "requires_kspace": {"type": "boolean"}
+      }
+    },
+    "outputs": {"type": "object"},
+    "validation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["not_run", "passed", "failed"]}
+      }
+    }
+  }
+}
