@@ -71,8 +71,9 @@ intermediate representation, a fail-closed compatibility rule, and an
 AMBER/LAMMPS reference fixture. They should not add molecule-name checks or
 special cases for a particular PDB.
 
-The next maintainability milestone is moving these boundaries from the legacy
-single module into an `amber_to_lammps` package (`model`, `topology`,
-`nonbonded`, `connectivity`, `writers`, and `cli`) without changing the public
-CLI or Python API. That refactor should follow characterization tests rather
-than be combined with new scientific behavior.
+The package split has begun behind the unchanged public CLI and Python API:
+`amber_to_lammps_core.model` owns scaling model objects and
+`amber_to_lammps_core.topology` owns topology-level scaling analysis. Later
+steps will extract nonbonded, connectivity, writer, and CLI boundaries only
+after equivalent characterization coverage; scientific behavior must not be
+changed merely to complete the reorganization.

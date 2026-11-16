@@ -26,80 +26,18 @@ import parmed as pmd
 import numpy as np
 
 from amber_to_lammps_provenance import build_provenance, compact_summary, write_provenance
+from amber_to_lammps_core import (
+    SpecialBondScaling,
+    UnsupportedScalingError,
+    dihedral_phase_degrees,
+    distinct_14_scaling_profiles,
+    resolve_system_14_scaling,
+    topology_14_scaling,
+)
 
 
 class UnsupportedNonbondedError(ValueError):
     """Raised when pair-specific parameters cannot be combined safely."""
-
-
-class UnsupportedScalingError(ValueError):
-    """Raised when AMBER 1-4 scaling cannot be represented exactly."""
-
-
-@dataclass(frozen=True)
-class SpecialBondScaling:
-    """AMBER divisors and their equivalent LAMMPS 1-4 weights."""
-
-    scee: float
-    scnb: float
-
-    @property
-    def coulomb_weight(self):
-        return 1.0 / self.scee
-
-    @property
-    def lj_weight(self):
-        return 1.0 / self.scnb
-
-
-def topology_14_scaling(parm, topology_name="topology"):
-    """Return the unique active proper-dihedral SCEE/SCNB profile.
-
-    AMBER stores zero scaling placeholders for some impropers and repeated
-    torsion terms. Only proper dihedrals that own their end-to-end interaction
-    (``ignore_end`` is false) determine the LAMMPS 1-4 weights.
-    """
-    profiles = set()
-    for dihedral in parm.dihedrals:
-        if dihedral.improper or dihedral.ignore_end:
-            continue
-        terms = dihedral.type if isinstance(dihedral.type, (list, tuple)) else [dihedral.type]
-        for term in terms:
-            if term is None:
-                continue
-            scee = float(term.scee)
-            scnb = float(term.scnb)
-            if scee <= 0.0 or scnb <= 0.0:
-                raise UnsupportedScalingError(
-                    f"{topology_name} has non-positive SCEE/SCNB values on an active "
-                    f"proper dihedral: SCEE={scee:g}, SCNB={scnb:g}."
-                )
-            profiles.add((round(scee, 10), round(scnb, 10)))
-
-    if not profiles:
-        return None
-    if len(profiles) != 1:
-        details = ", ".join(f"SCEE={scee:g}/SCNB={scnb:g}" for scee, scnb in sorted(profiles))
-        raise UnsupportedScalingError(
-            f"{topology_name} uses multiple active 1-4 scaling profiles ({details}); "
-            "one global LAMMPS special_bonds setting cannot represent them exactly."
-        )
-    scee, scnb = next(iter(profiles))
-    return SpecialBondScaling(scee=scee, scnb=scnb)
-
-
-def resolve_system_14_scaling(profiles, topologies):
-    """Return the common active profile, or ``None`` for mixed/no profiles."""
-    used = {}
-    for topology, profile in zip(topologies, profiles):
-        if profile is not None:
-            used.setdefault(profile, []).append(topology)
-    return next(iter(used), None) if len(used) == 1 else None
-
-
-def distinct_14_scaling_profiles(profiles):
-    """Return active scaling profiles in stable first-seen order."""
-    return list(dict.fromkeys(profile for profile in profiles if profile is not None))
 
 
 def validate_cross_topology_c4(top_ctx, topologies):
@@ -110,11 +48,6 @@ def validate_cross_topology_c4(top_ctx, topologies):
             "AMBER does not provide cross-topology C4 coefficients. Convert a combined "
             "topology or use a validated explicit cross-interaction model."
         )
-
-
-def dihedral_phase_degrees(term):
-    """Return a ParmEd dihedral phase, whose public unit is degrees."""
-    return float(term.phase)
 
 
 def _amber_lj_pair(parm, type_i, type_j):

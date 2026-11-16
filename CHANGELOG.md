@@ -11,6 +11,11 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ### Added
 
+- A non-covalent ff14SB peptide + GAFF2 ligand energy-and-force validation
+  fixture against AmberTools `sander`.
+- The first internal package-split boundary for force-field model objects and
+  topology scaling analysis, preserving the public CLI and Python API.
+
 - AMBER-family conversion with topology-derived SCEE/SCNB 1-4 scaling and
   explicit fail-closed boundaries.
 - Exact non-covalent GAFF2/GLYCAM mixed scaling using repeated LAMMPS
