@@ -11,9 +11,15 @@ submission.
   assisted with code review, implementation and refactoring suggestions, test
   scaffolding, CI configuration, validation scripts, documentation drafting,
   release preparation and repository-readiness checks.
+- **Anthropic Claude (exact hosted model revision not recorded):** assisted
+  with independent code and scientific-claim reviews supplied to the author.
+- **xAI Grok (exact hosted model revision not recorded):** assisted with an
+  independent repository-based audit of the related-tool comparison and charge
+  benchmark wording.
 
 AI suggestions were used in converter code, regression tests, GitHub Actions,
-the GAFF2/GLYCAM `sander` validation bundle, and project documentation.
+the GAFF2/GLYCAM `sander` validation bundle, project documentation, and the
+JOSS manuscript draft.
 
 ## Human responsibility
 

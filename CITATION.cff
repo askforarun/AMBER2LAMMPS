@@ -3,6 +3,7 @@ message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Sridhar"
   given-names: "Arun"
+  orcid: "https://orcid.org/0000-0002-1984-3513"
 title: "AMBER2LAMMPS: A validated, provenance-aware, and agent-ready framework for AMBER-family simulations in LAMMPS"
 version: 1.1.0
 doi: 10.5281/zenodo.18114886
@@ -28,6 +29,6 @@ references:
   authors:
   - family-names: "Sridhar"
     given-names: "Arun"
-  year: 2025
+  year: 2026
   doi: 10.5281/zenodo.18114886
   url: "https://github.com/askforarun/AMBER2LAMMPS"

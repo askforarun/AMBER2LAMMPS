@@ -17,9 +17,9 @@ explicit.
 | Contribution, governance and support expectations | `CONTRIBUTING.md`; `GOVERNANCE.md` | Met |
 | More than six months of public iterative development | Public Git history beginning September 2025 | Met by repository age; editors make the final assessment |
 | Demonstrated research impact/use | `docs/research-use.md` | **Blocked: real use must be documented** |
-| Feature-complete claimed scope | Support matrix | Validated for the specific systems listed; larger folded proteins and protein/ligand or protein/carbohydrate mixtures remain planned and must not be claimed |
-| JOSS manuscript and bibliography | `paper/paper.md`, `paper/paper.bib` | **Missing** |
-| Accurate citation metadata | `CITATION.cff` | Version/date corrected; add an ORCID only after the author supplies and verifies it |
+| Feature-complete claimed scope | Support matrix | Validated for the specific systems listed, including a non-covalent peptide/GAFF2 ligand fixture; larger folded proteins and protein/carbohydrate mixtures remain planned and must not be claimed |
+| JOSS manuscript and bibliography | `paper/paper.md`, `paper/paper.bib` | Draft present; research-impact and AI-disclosure gates remain |
+| Accurate citation metadata | `CITATION.cff` | Version, date and author-supplied ORCID recorded |
 | AI usage disclosure | `AI_USAGE.md` | Draft present; authors must confirm completeness before submission |
 | Independent-user installation test | Research-use record | **Missing** |
 
