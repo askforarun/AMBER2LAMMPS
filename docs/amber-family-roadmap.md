@@ -45,7 +45,11 @@ factors, total energy differs by about 0.00007 kcal/mol and force RMSE is about
 
 ## Publication target
 
-The intended JOSS title is **AMBER2LAMMPS: Validated AMBER-family force-field
-conversion for LAMMPS**. Submission follows only after the supported-system
+The intended JOSS title is **AMBER2LAMMPS: A validated, provenance-aware, and
+agent-ready framework for AMBER-family simulations in LAMMPS**. Here,
+"agent-ready" means a structured and bounded interface that exposes compact,
+machine-readable conversion and validation results while retaining complete
+provenance and large molecular artifacts on disk. It does not mean that the
+converter contains an LLM or autonomously designs simulations. Submission follows only after the supported-system
 matrix has energy-and-force validation, documented research use, contribution
 guidelines, a changelog, governance/support expectations, and a tagged archive.

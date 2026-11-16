@@ -58,7 +58,7 @@ jobs:
           server = create_server()
           tools = asyncio.run(server.list_tools())
           names = {tool.name for tool in tools}
-          assert "convert" in names, names
+          assert {"convert", "check_lammps_run0"} <= names, names
           PY
 
   package:
@@ -169,6 +169,29 @@ jobs:
           python validation/amber_protein_water_ions/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
+
+      - name: Exercise compact MCP LAMMPS validation
+        shell: micromamba-shell {0}
+        run: |
+          python - <<'PY'
+          import os
+          import tempfile
+          from amber_to_lammps_mcp import convert_amber_system, _check_lammps_run0
+
+          root = tempfile.mkdtemp(prefix="a2l-mcp-run0-")
+          conversion = convert_amber_system(
+              pdb_file=os.path.abspath("ethanol.pdb"),
+              topologies=[os.path.abspath("ethanol.prmtop")],
+              counts=[1], charges=[0], data_file="ethanol.data",
+              parameter_file="ethanol.parm", output_root=root,
+          )
+          result = _check_lammps_run0(
+              conversion["files"]["provenance"], output_root=root,
+              lammps_executable=os.path.abspath("lammps-build/lmp"),
+          )
+          assert result["status"] == "passed", result
+          assert "potential" in result["energies_kcal_mol"], result
+          PY
 
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:

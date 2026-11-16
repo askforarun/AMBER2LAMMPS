@@ -3,12 +3,12 @@ message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Sridhar"
   given-names: "Arun"
-title: "AMBER2LAMMPS: A Python Utility for Converting AMBER Molecular Dynamics Files to LAMMPS Data Format"
+title: "AMBER2LAMMPS: A validated, provenance-aware, and agent-ready framework for AMBER-family simulations in LAMMPS"
 version: 1.1.0
 doi: 10.5281/zenodo.18114886
 date-released: 2026-11-15
 url: "https://github.com/askforarun/AMBER2LAMMPS"
-abstract: "A Python utility for converting AMBER topology and PDB files to LAMMPS data and parameter files, with mixed-system support, validation-first error handling, automated tests, and reproducible energy validation."
+abstract: "A validation-first framework for translating fully parameterized AMBER-family systems to LAMMPS. It combines energy-and-force validation against AMBER sander, machine-readable provenance, fail-closed scientific checks, and a bounded MCP interface that returns compact decision-relevant summaries while retaining large molecular artifacts on disk."
 license: MIT
 repository-code: "https://github.com/askforarun/AMBER2LAMMPS"
 keywords:
@@ -19,9 +19,12 @@ keywords:
 - charge normalization
 - Python
 - scientific computing
+- reproducible research
+- provenance
+- model context protocol
 references:
 - type: software
-  title: "AMBER2LAMMPS: A Python Utility for Converting AMBER Molecular Dynamics Files to LAMMPS Data Format"
+  title: "AMBER2LAMMPS: A validated, provenance-aware, and agent-ready framework for AMBER-family simulations in LAMMPS"
   authors:
   - family-names: "Sridhar"
     given-names: "Arun"

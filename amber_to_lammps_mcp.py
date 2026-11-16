@@ -6,14 +6,20 @@ converter and its Python 3.9+ installation independent of MCP.
 
 import contextlib
 import io
+import json
 import os
+import shutil
+import subprocess
 import threading
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from amber_to_lammps import amber2lammps
+from amber_to_lammps_provenance import sha256_file, write_provenance
 
 
 _CONVERSION_LOCK = threading.Lock()
+_VALIDATION_LOCK = threading.Lock()
 
 
 def _resolve_output(path: str, root: str) -> str:
@@ -33,6 +39,31 @@ def _resolve_output(path: str, root: str) -> str:
     return candidate
 
 
+def _relative(path: str, root: str) -> str:
+    return os.path.relpath(os.path.realpath(path), os.path.realpath(root))
+
+
+def _compact_conversion(conversion, root, data_file, parameter_file,
+                        provenance_file, debug_files):
+    summary = conversion["summary"]
+    return {
+        "status": "success",
+        "atoms": summary["atoms"],
+        "topologies": summary["topologies"],
+        "nonbonded_strategy": summary["nonbonded_strategy"],
+        "warnings": summary["warnings"],
+        "lammps": summary["lammps"],
+        "output_directory": ".",
+        "files": {
+            "data": _relative(data_file, root),
+            "parameters": _relative(parameter_file, root),
+            "provenance": _relative(provenance_file, root),
+            "debug": [_relative(path, root) for path in debug_files],
+        },
+        "validation_status": summary["validation_status"],
+    }
+
+
 def convert_amber_system(
     pdb_file: str,
     topologies: List[str],
@@ -49,6 +80,7 @@ def convert_amber_system(
     overwrite: bool = False,
     allow_pdb_name_mismatch: bool = False,
     output_root: Optional[str] = None,
+    detail: str = "summary",
 ) -> Dict[str, Any]:
     """Convert AMBER topology/PDB inputs and return a structured result.
 
@@ -63,6 +95,8 @@ def convert_amber_system(
         raise ValueError("Every molecule count must be a positive integer.")
     if c4_coulomb not in ("long", "cut"):
         raise ValueError("c4_coulomb must be 'long' or 'cut'.")
+    if detail not in ("summary", "full"):
+        raise ValueError("detail must be 'summary' or 'full'.")
 
     inputs = [pdb_file, *topologies]
     missing = [path for path in inputs if not os.path.isfile(path)]
@@ -129,14 +163,159 @@ def convert_amber_system(
             for name in ("pairs.txt", "bonds.txt", "angles.txt", "dihedrals.txt")
         ]
 
-    return {
-        "status": "success",
-        "data_file": os.path.abspath(data_file),
-        "parameter_file": os.path.abspath(parameter_file),
-        "debug_files": debug_files,
-        "messages": messages,
-        "summary": conversion["summary"],
+    response = _compact_conversion(
+        conversion, root, data_file, parameter_file, provenance_file, debug_files
+    )
+    if detail == "full":
+        response["provenance"] = conversion["record"]
+        response["messages"] = messages
+    return response
+
+
+def _parse_lammps_energies(output: str) -> Dict[str, float]:
+    wanted = {
+        "E_bond": "bond", "E_angle": "angle", "E_dihed": "dihedral",
+        "E_vdwl": "vdw", "E_coul": "coulomb_short",
+        "E_long": "coulomb_long", "PotEng": "potential",
     }
+    lines = output.splitlines()
+    for index, line in enumerate(lines[:-1]):
+        headers = line.split()
+        if not all(field in headers for field in wanted):
+            continue
+        for candidate in lines[index + 1:index + 5]:
+            values = candidate.split()
+            if len(values) != len(headers):
+                continue
+            try:
+                parsed = dict(zip(headers, map(float, values)))
+            except ValueError:
+                continue
+            return {name: parsed[field] for field, name in wanted.items()}
+    return {}
+
+
+def _check_lammps_run0(provenance_file: str, timeout: float = 60.0,
+                       overwrite: bool = False, output_root: Optional[str] = None,
+                       lammps_executable: Optional[str] = None) -> Dict[str, Any]:
+    """Run a bounded LAMMPS smoke test described by conversion provenance."""
+    if timeout <= 0 or timeout > 600:
+        raise ValueError("timeout must be greater than 0 and no more than 600 seconds.")
+    root = output_root or os.environ.get("AMBER2LAMMPS_MCP_ROOT", os.getcwd())
+    provenance_path = _resolve_output(provenance_file, root)
+    if not os.path.isfile(provenance_path):
+        raise ValueError(f"Provenance file not found: {provenance_file}")
+    with open(provenance_path, encoding="utf-8") as stream:
+        record = json.load(stream)
+
+    data_record = record["outputs"]["lammps_data"]
+    parameter_record = record["outputs"]["lammps_parameters"]
+    data_file = _resolve_output(data_record["path"], root)
+    parameter_file = _resolve_output(parameter_record["path"], root)
+    for path, expected in (
+        (data_file, data_record["sha256"]),
+        (parameter_file, parameter_record["sha256"]),
+    ):
+        if not os.path.isfile(path) or sha256_file(path) != expected:
+            raise ValueError(f"Conversion output is missing or differs from provenance: {path}")
+
+    configured = lammps_executable or os.environ.get("AMBER2LAMMPS_LAMMPS")
+    if not configured:
+        raise ValueError(
+            "No LAMMPS executable configured; set AMBER2LAMMPS_LAMMPS when starting the server."
+        )
+    executable = configured if os.path.isabs(configured) else shutil.which(configured)
+    if not executable or not os.path.isfile(executable) or not os.access(executable, os.X_OK):
+        raise ValueError(f"Configured LAMMPS executable is not executable: {configured}")
+
+    base = os.path.basename(provenance_path)
+    if base.endswith(".provenance.json"):
+        base = base[:-len(".provenance.json")]
+    else:
+        base = os.path.splitext(base)[0]
+    directory = os.path.dirname(provenance_path)
+    input_file = _resolve_output(os.path.join(directory, base + ".run0.input"), root)
+    log_file = _resolve_output(os.path.join(directory, base + ".run0.log"), root)
+    with _VALIDATION_LOCK:
+        existing = [path for path in (input_file, log_file) if os.path.exists(path)]
+        if existing and not overwrite:
+            raise FileExistsError(
+                "Validation file(s) already exist; set overwrite=true to replace them: "
+                + ", ".join(existing)
+            )
+
+        contract = record["lammps"]
+        counts = record["conversion"]["counts"]
+        commands = ["units real", f"atom_style {contract['atom_style']}", "boundary p p p"]
+        if counts["bonds"]:
+            commands.append("bond_style harmonic")
+        if counts["angles"]:
+            commands.append("angle_style harmonic")
+        if counts["dihedrals"]:
+            commands.append("dihedral_style fourier")
+        if not contract["sets_pair_style"]:
+            cutoff = contract["cutoff_angstrom"]
+            commands.append(
+                f"pair_style lj/cut/coul/{contract['coulomb']} {cutoff:g} {cutoff:g}"
+            )
+        commands.extend([
+            f"read_data {os.path.relpath(data_file, directory)}",
+            f"include {os.path.relpath(parameter_file, directory)}",
+        ])
+        if contract["requires_kspace"]:
+            commands.append("kspace_style pppm 1.0e-6")
+        commands.extend([
+            "thermo_style custom step ebond eangle edihed eimp evdwl ecoul elong etail pe",
+            "thermo 1",
+            "run 0",
+        ])
+        with open(input_file, "w", encoding="utf-8") as stream:
+            stream.write("\n".join(commands) + "\n")
+
+        status = "failed"
+        error = None
+        try:
+            result = subprocess.run(
+                [executable, "-in", input_file, "-log", "none"], cwd=directory,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                timeout=timeout, check=False,
+            )
+            output = result.stdout
+            status = "passed" if result.returncode == 0 else "failed"
+            if status == "failed":
+                error = next(
+                    (line.strip() for line in output.splitlines() if "ERROR" in line),
+                    f"LAMMPS exited with status {result.returncode}",
+                )
+        except subprocess.TimeoutExpired as exc:
+            output = exc.stdout or ""
+            if isinstance(output, bytes):
+                output = output.decode(errors="replace")
+            error = f"LAMMPS run exceeded {timeout:g} seconds"
+        with open(log_file, "w", encoding="utf-8") as stream:
+            stream.write(output)
+
+        energies = _parse_lammps_energies(output)
+        record["validation"] = {
+            "status": status,
+            "kind": "lammps_run0",
+            "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
+            "energies_kcal_mol": energies,
+            "error": error,
+            "log": _relative(log_file, root),
+        }
+        write_provenance(provenance_path, record)
+    response = {
+        "status": status,
+        "energies_kcal_mol": energies,
+        "error": error,
+        "files": {
+            "input": _relative(input_file, root),
+            "log": _relative(log_file, root),
+            "provenance": _relative(provenance_path, root),
+        },
+    }
+    return response
 
 
 def create_server():
@@ -174,6 +353,7 @@ def create_server():
         provenance_file: Optional[str] = None,
         overwrite: bool = False,
         allow_pdb_name_mismatch: bool = False,
+        detail: str = "summary",
     ) -> Dict[str, Any]:
         """Convert AMBER files to LAMMPS files on the local machine.
 
@@ -197,6 +377,21 @@ def create_server():
                 provenance_file=provenance_file,
                 overwrite=overwrite,
                 allow_pdb_name_mismatch=allow_pdb_name_mismatch,
+                detail=detail,
+            )
+        except Exception as exc:
+            raise ToolError(str(exc)) from exc
+
+    @server.tool()
+    def check_lammps_run0(
+        provenance_file: str,
+        timeout: float = 60.0,
+        overwrite: bool = False,
+    ) -> Dict[str, Any]:
+        """Run a bounded LAMMPS run-0 check and return compact energies/errors."""
+        try:
+            return _check_lammps_run0(
+                provenance_file=provenance_file, timeout=timeout, overwrite=overwrite
             )
         except Exception as exc:
             raise ToolError(str(exc)) from exc

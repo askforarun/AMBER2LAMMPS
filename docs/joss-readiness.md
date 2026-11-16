@@ -11,6 +11,7 @@ explicit.
 | Installable language-standard package | `pyproject.toml`; PyPI releases | Met |
 | Tests and continuous integration | Python matrix, packaging, whitespace and required `sander` validation jobs | Met |
 | Scientific correctness procedures | `validation/amber_family_mix/`; `validation/amber_protein_water_ions/`; `docs/support-matrix.md` | Met for the currently validated GAFF2 + GLYCAM and ff14SB + TIP3P + NaCl fixtures |
+| Agent-ready claim | `amber_to_lammps_mcp.py`; MCP tests; `docs/agent-readiness.md` | Interface and safety properties implemented; reproducible context-size benchmark still required before submission |
 | Clearly bounded research scope | `docs/support-matrix.md`; `docs/scientific-design.md` | Met |
 | Release history and changelog | `CHANGELOG.md`; annotated `v1.0.0` and `v1.1.0` releases | Met |
 | Contribution, governance and support expectations | `CONTRIBUTING.md`; `GOVERNANCE.md` | Met |

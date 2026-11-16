@@ -3,7 +3,7 @@
   "$id": "https://raw.githubusercontent.com/askforarun/AMBER2LAMMPS/main/docs/provenance.schema.json",
   "title": "AMBER2LAMMPS conversion provenance",
   "type": "object",
-  "required": ["schema_version", "software", "inputs", "conversion", "outputs", "validation"],
+  "required": ["schema_version", "software", "inputs", "conversion", "lammps", "outputs", "validation"],
   "properties": {
     "schema_version": {"const": "1.0"},
     "recorded_at_utc": {"type": "string", "format": "date-time"},
@@ -18,6 +18,18 @@
         "nonbonded_strategy": {"type": "string"},
         "counts": {"type": "object"},
         "warnings": {"type": "array"}
+      }
+    },
+    "lammps": {
+      "type": "object",
+      "required": ["atom_style", "include", "sets_pair_style", "special_bonds", "required_packages", "requires_kspace"],
+      "properties": {
+        "atom_style": {"const": "full"},
+        "include": {"type": "string"},
+        "sets_pair_style": {"type": "boolean"},
+        "special_bonds": {"type": ["string", "null"]},
+        "required_packages": {"type": "array", "items": {"type": "string"}},
+        "requires_kspace": {"type": "boolean"}
       }
     },
     "outputs": {"type": "object"},

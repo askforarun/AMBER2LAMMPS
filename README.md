@@ -2,12 +2,17 @@
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Convert once. Prove exactly what happened. Share only the context an AI needs.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
-  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 49 automated tests · ⚡ Cached scientific CI</strong></p>
+  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 52 automated tests · ⚡ Cached scientific CI</strong></p>
 </div>
 
 ---
 
 # Overview
+
+**AMBER2LAMMPS is a validated, provenance-aware, and agent-ready framework for
+AMBER-family simulations in LAMMPS.** Agent-ready means that external agents
+can use bounded MCP conversion and validation tools with compact structured
+responses; it does not mean that an LLM is embedded in the converter.
 
 ![AMBER2LAMMPS converts AMBER prmtop and PDB inputs into LAMMPS data and parameter files](6ce0db32-87a0-4a12-ab3d-44768ded7021.png)
 
@@ -160,15 +165,24 @@ Configure an MCP client to launch the installed stdio server:
 }
 ```
 
-The server exposes a `convert` tool accepting PDB/topology input paths, molecule counts, target
-charges, output paths, and the converter's main options. Outputs are confined to the directory in
-`AMBER2LAMMPS_MCP_ROOT` (the server working directory by default), and existing files are refused
-unless the tool call explicitly sets `overwrite=true`. Every MCP conversion writes a versioned
-`<data-stem>.provenance.json` record by default and returns a compact summary with its path and
-SHA-256 digest. This keeps routine AI responses small; a client only needs to read the full record
-or simulation files when investigating details. Pass `provenance_file` to select another path.
-Conversion calls are serialized so warnings cannot leak between concurrent MCP requests or into the
-stdio protocol channel.
+The server exposes two tools:
+
+- `convert` accepts PDB/topology paths, molecule counts, target charges, output paths, and the main
+  converter options. Its default `detail="summary"` response uses short relative paths, compact
+  warning codes, and a `lammps` setup block describing the include file, `special_bonds`, whether the
+  include sets `pair_style`, and required LAMMPS packages. Use `detail="full"` only when the complete
+  provenance record and human-readable converter messages are needed.
+- `check_lammps_run0` executes a bounded LAMMPS `run 0`, verifies the data and parameter hashes
+  first, and returns only energy terms and a compact error. The generated input and complete LAMMPS
+  output stay on disk and the validation result is added to provenance. Configure the executable
+  when starting the server, for example `AMBER2LAMMPS_LAMMPS=/path/to/lmp`.
+
+Outputs are confined to `AMBER2LAMMPS_MCP_ROOT` (the server working directory by default), and
+existing files are refused unless the tool call explicitly sets `overwrite=true`. Every conversion
+writes a versioned `<data-stem>.provenance.json` record. Conversion and validation calls are
+serialized so concurrent requests cannot mix messages or overwrite one another. These defaults let
+an AI client convert and validate a system without loading large topology, data, or log files into
+its context.
 
 ### Reproducible provenance
 
@@ -181,7 +195,8 @@ amber-to-lammps system.data system.parm system.pdb \
 ```
 
 The record includes input/output SHA-256 hashes, software versions, topology counts, raw and target
-charges, detected SCEE/SCNB profiles, nonbonded strategy, box dimensions, and conversion warnings.
+charges, detected SCEE/SCNB profiles, nonbonded strategy, box dimensions, conversion warnings, and
+the LAMMPS execution contract.
 It deliberately reports validation as `not_run`: a successful conversion is not by itself evidence
 of agreement with AMBER `sander`. The schema is published at
 [`docs/provenance.schema.json`](docs/provenance.schema.json).

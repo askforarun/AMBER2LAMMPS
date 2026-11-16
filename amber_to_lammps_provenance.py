@@ -75,6 +75,49 @@ def _scaling_record(profile):
     }
 
 
+def _lammps_contract(param_file, top_ctx, conn_ctx, c4_cutoff, c4_coulomb):
+    """Describe the minimal LAMMPS setup needed to consume generated files."""
+    profiles = [profile for profile in top_ctx.scaling_profiles if profile is not None]
+    distinct = list(dict.fromkeys(profiles))
+    mixed_scaling = len(distinct) > 1
+    sets_pair_style = mixed_scaling or top_ctx.has_c4
+    special_bonds = None
+    if mixed_scaling:
+        baseline = next(
+            profile for profile in distinct
+            if profile.lj_weight not in (0.0, 1.0)
+            and profile.coulomb_weight not in (0.0, 1.0)
+        )
+        special_bonds = (
+            f"special_bonds lj 0.0 0.0 {baseline.lj_weight:.10g} "
+            f"coul 0.0 0.0 {baseline.coulomb_weight:.10g}"
+        )
+    elif top_ctx.system_14_scaling is not None:
+        profile = top_ctx.system_14_scaling
+        special_bonds = (
+            f"special_bonds lj 0.0 0.0 {profile.lj_weight:.10g} "
+            f"coul 0.0 0.0 {profile.coulomb_weight:.10g}"
+        )
+
+    packages = ["MOLECULE"]
+    if conn_ctx.dihedral_count:
+        packages.append("EXTRA-MOLECULE")
+    if c4_coulomb == "long":
+        packages.append("KSPACE")
+    if top_ctx.has_c4:
+        packages.append("LEPTON")
+    return {
+        "atom_style": "full",
+        "include": os.path.basename(param_file),
+        "sets_pair_style": sets_pair_style,
+        "special_bonds": special_bonds,
+        "required_packages": packages,
+        "coulomb": c4_coulomb,
+        "cutoff_angstrom": c4_cutoff,
+        "requires_kspace": c4_coulomb == "long",
+    }
+
+
 def build_provenance(*, data_file, param_file, topologies, molecule_counts,
                      pdb_file, charges_target, buffer, keep_temp, c4_cutoff,
                      c4_coulomb, use_typelabels, top_ctx, conn_ctx,
@@ -176,6 +219,9 @@ def build_provenance(*, data_file, param_file, topologies, molecule_counts,
                 "zlo": box_bounds.zlo, "zhi": box_bounds.zhi,
             },
         },
+        "lammps": _lammps_contract(
+            param_file, top_ctx, conn_ctx, c4_cutoff, c4_coulomb
+        ),
         "outputs": {
             "lammps_data": file_record(data_file),
             "lammps_parameters": file_record(param_file),
@@ -206,7 +252,15 @@ def compact_summary(record, provenance_path=None, provenance_sha256=None):
         "topologies": len(record["inputs"]["topologies"]),
         "nonbonded_strategy": conversion["nonbonded_strategy"],
         "has_c4_terms": conversion["has_c4_terms"],
-        "warning_count": len(conversion["warnings"]),
+        "warnings": [
+            {
+                "code": item["code"],
+                "topology": item["topology_index"],
+                "delta_e": item["adjustment_per_molecule_e"],
+            }
+            for item in conversion["warnings"]
+        ],
+        "lammps": record["lammps"],
         "validation_status": record["validation"]["status"],
         "provenance_file": provenance_path,
         "provenance_sha256": provenance_sha256,

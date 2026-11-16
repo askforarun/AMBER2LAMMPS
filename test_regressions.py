@@ -70,7 +70,7 @@ class ConversionTestCase(unittest.TestCase):
 class McpConversionTests(ConversionTestCase):
     """The MCP-facing helper validates inputs and uses the conversion engine."""
 
-    def test_mcp_helper_converts_and_returns_absolute_outputs(self):
+    def test_mcp_helper_returns_compact_relative_outputs_and_contract(self):
         result = a2l_mcp.convert_amber_system(
             pdb_file=ETHANOL_PDB,
             topologies=[ETHANOL_PRMTOP],
@@ -81,20 +81,26 @@ class McpConversionTests(ConversionTestCase):
             type_labels=True,
         )
         self.assertEqual(result["status"], "success")
-        self.assertEqual(
-            os.path.realpath(result["data_file"]),
-            os.path.realpath(os.path.join(self.tmp, "mcp.data")),
+        self.assertEqual(result["files"]["data"], "mcp.data")
+        self.assertEqual(result["files"]["parameters"], "mcp.parm")
+        self.assertEqual(result["files"]["provenance"], "mcp.provenance.json")
+        self.assertTrue(os.path.isfile(result["files"]["data"]))
+        self.assertEqual(result["atoms"], 9)
+        self.assertEqual(result["validation_status"], "not_run")
+        self.assertEqual(result["lammps"]["atom_style"], "full")
+        self.assertIn("KSPACE", result["lammps"]["required_packages"])
+        self.assertNotIn("provenance", result)
+        self.assertNotIn("messages", result)
+
+    def test_mcp_full_detail_returns_record_and_messages(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[1], data_file="full.data", parameter_file="full.parm",
+            detail="full",
         )
-        self.assertEqual(
-            os.path.realpath(result["parameter_file"]),
-            os.path.realpath(os.path.join(self.tmp, "mcp.parm")),
-        )
-        self.assertTrue(os.path.isfile(result["data_file"]))
-        self.assertTrue(os.path.isfile(result["parameter_file"]))
-        self.assertEqual(result["summary"]["atoms"], 9)
-        self.assertEqual(result["summary"]["validation_status"], "not_run")
-        self.assertTrue(os.path.isfile(result["summary"]["provenance_file"]))
-        self.assertEqual(len(result["summary"]["provenance_sha256"]), 64)
+        self.assertEqual(result["provenance"]["conversion"]["counts"]["atoms"], 9)
+        self.assertTrue(any("--charges requests" in line for line in result["messages"]))
+        self.assertEqual(result["warnings"][0]["code"], "large_charge_adjustment")
 
     def test_provenance_records_hashes_without_claiming_validation(self):
         amber2lammps(
@@ -159,10 +165,43 @@ class McpConversionTests(ConversionTestCase):
         with ThreadPoolExecutor(max_workers=4) as pool:
             results = list(pool.map(convert, range(4)))
         for index, result in enumerate(results):
-            joined = "\n".join(result["messages"])
-            self.assertIn(f"--charges requests {index + 1:.6f} e", joined)
-            for other in set(range(1, 5)) - {index + 1}:
-                self.assertNotIn(f"--charges requests {other:.6f} e", joined)
+            self.assertEqual(len(result["warnings"]), 1)
+            self.assertAlmostEqual(
+                result["warnings"][0]["delta_e"], index + 1.0, places=4
+            )
+
+    def test_run0_helper_returns_compact_energies_and_updates_provenance(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="run.data", parameter_file="run.parm",
+        )
+        executable = os.path.join(self.tmp, "fake-lmp")
+        with open(executable, "w", encoding="utf-8") as stream:
+            stream.write("#!/bin/sh\n")
+        os.chmod(executable, 0o700)
+        output = "E_bond E_angle E_dihed E_vdwl E_coul E_long PotEng\n1 2 3 4 5 6 21\n"
+        completed = types.SimpleNamespace(returncode=0, stdout=output)
+        with mock.patch.object(a2l_mcp.subprocess, "run", return_value=completed):
+            checked = a2l_mcp._check_lammps_run0(
+                result["files"]["provenance"], lammps_executable=executable
+            )
+        self.assertEqual(checked["status"], "passed")
+        self.assertEqual(checked["energies_kcal_mol"]["potential"], 21.0)
+        self.assertNotIn("output", checked)
+        with open(result["files"]["provenance"], encoding="utf-8") as stream:
+            provenance = json.load(stream)
+        self.assertEqual(provenance["validation"]["status"], "passed")
+        self.assertTrue(os.path.isfile(checked["files"]["log"]))
+
+    def test_run0_helper_rejects_modified_conversion_output(self):
+        result = a2l_mcp.convert_amber_system(
+            pdb_file=ETHANOL_PDB, topologies=[ETHANOL_PRMTOP], counts=[1],
+            charges=[0], data_file="changed.data", parameter_file="changed.parm",
+        )
+        with open("changed.data", "a", encoding="utf-8") as stream:
+            stream.write("# changed\n")
+        with self.assertRaisesRegex(ValueError, "differs from provenance"):
+            a2l_mcp._check_lammps_run0(result["files"]["provenance"])
 
     def test_provenance_source_control_rejects_enclosing_repository(self):
         completed = types.SimpleNamespace(stdout="/unrelated/project\n")
