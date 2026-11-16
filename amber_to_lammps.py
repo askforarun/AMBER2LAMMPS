@@ -25,6 +25,8 @@ from dataclasses import dataclass
 import parmed as pmd
 import numpy as np
 
+from amber_to_lammps_provenance import build_provenance, compact_summary, write_provenance
+
 
 class UnsupportedNonbondedError(ValueError):
     """Raised when pair-specific parameters cannot be combined safely."""
@@ -220,6 +222,8 @@ Examples:
                         help='Coulomb treatment for generated 12-6-4 pair style (default: long)')
     parser.add_argument('--typelabels', action='store_true',
                         help='Write out LAMMPS typelabels. Separate bond, angle, etc types will be created for separate types even if the parameters are the same.')
+    parser.add_argument('--provenance', metavar='FILE',
+                        help='Write a versioned JSON provenance record for this conversion')
     
     return parser.parse_args()
 
@@ -1322,12 +1326,19 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
 
 
 def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, charges_target,
-                 buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long", use_typelabels=False):
+                 buffer=3.8, verbose=False, keep_temp=False, c4_cutoff=9.0, c4_coulomb="long",
+                 use_typelabels=False, provenance_file=None, provenance_interface="python-api"):
     amber_parm_cls = pmd.amber.AmberParm
     print_details = pmd.tools.actions.printDetails
 
     if keep_temp:
         debug_file_paths(data_file, param_file)  # fail before writing anything on a name collision
+
+    if provenance_file:
+        provenance_real = os.path.realpath(provenance_file)
+        reserved = [data_file, param_file, pdb_file, *topologies]
+        if provenance_real in {os.path.realpath(path) for path in reserved}:
+            raise ValueError("Provenance file must not overwrite an input or conversion output file.")
 
     multi_mode = detect_multi_mode(topologies, molecule_counts, pdb_file, verbose)
 
@@ -1438,6 +1449,20 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         c4_coulomb=c4_coulomb,
     )
 
+    record = build_provenance(
+        data_file=data_file, param_file=param_file, topologies=topologies,
+        molecule_counts=molecule_counts, pdb_file=pdb_file,
+        charges_target=charges_target, buffer=buffer, keep_temp=keep_temp,
+        c4_cutoff=c4_cutoff, c4_coulomb=c4_coulomb,
+        use_typelabels=use_typelabels, top_ctx=top_ctx, conn_ctx=conn_ctx,
+        expected_total_atoms=expected_total_atoms, box_bounds=box_bounds,
+        interface=provenance_interface,
+    )
+    provenance_path = None
+    provenance_sha256 = None
+    if provenance_file:
+        provenance_path, provenance_sha256 = write_provenance(provenance_file, record)
+
     if verbose:
         print("Conversion complete!")
         print("Generated files:")
@@ -1448,6 +1473,11 @@ def amber2lammps(data_file, param_file, topologies, molecule_counts, pdb_file, c
         print(f"  - {conn_ctx.bond_count} bonds ({conn_ctx.bond_type_count} unique types)")
         print(f"  - {conn_ctx.angle_count} angles ({conn_ctx.angle_type_count} unique types)")
         print(f"  - {conn_ctx.dihedral_count} dihedrals ({conn_ctx.dihedral_type_count} unique types)")
+
+    return {
+        "record": record,
+        "summary": compact_summary(record, provenance_path, provenance_sha256),
+    }
 
 def main():
     """Main function"""
@@ -1471,6 +1501,8 @@ def main():
             c4_cutoff=args.c4_cutoff,
             c4_coulomb=args.c4_coulomb,
             use_typelabels=args.typelabels,
+            provenance_file=args.provenance,
+            provenance_interface="cli",
         )
         print(f"✓ Conversion completed successfully!")
         print(f"Output files: {args.data_file}, {args.param_file}")

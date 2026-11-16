@@ -53,18 +53,29 @@ in `expected_results.json` and enforced by the validator.
 
 ## TIP3P constraints for dynamics
 
-AMBER represents TIP3P as a rigid triangle. The topology contains HW-OW and
-HW-HW bonds but no water angle. A LAMMPS dynamics input must constrain those
-bonds with `fix shake`; otherwise it runs a flexible model that is not AMBER
-TIP3P. `amber2lammps/system_shake.input` demonstrates the correct command for
-this fixture:
+AMBER represents TIP3P as a three-bond triangle: two HW-OW bonds plus one
+HW-HW bond, with no water angle. LAMMPS SHAKE does not accept that triangular
+constraint graph; it requires two O-H bonds and the H-O-H angle. Run the
+committed preparation step after conversion:
 
-```lammps
-fix rigid_tip3p all shake 1.0e-6 200 0 b 8 9
+```bash
+cd validation/amber_protein_water_ions
+python prepare_shake_data.py
 ```
 
-Bond type IDs depend on the complete input topology, so users must verify the
-generated `bond_coeff` comments rather than copying `8 9` to unrelated systems.
+It writes `system_shake.data` and `system_shake.parm`, replacing each H-H bond
+with an H-O-H angle of the identical geometry. The dynamics input then selects
+only the TIP3P atom types and constrains the two O-H bonds and water angle:
+
+```lammps
+group tip3p type 11 12
+fix rigid_tip3p tip3p shake 1.0e-6 200 0 b 8 a 12
+```
+
+Atom, bond and angle type IDs depend on the complete topology. Users must
+identify the water types in their generated files rather than copying these
+IDs to unrelated systems. The validator runs both the scientific energy/force
+comparison and this SHAKE topology check.
 
 ## Regenerate the AMBER source
 

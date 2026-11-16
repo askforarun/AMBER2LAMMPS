@@ -3,6 +3,7 @@
 import contextlib
 import copy
 import io
+import json
 import os
 import shutil
 import tempfile
@@ -13,6 +14,7 @@ import parmed as pmd
 import amber_to_lammps as a2l
 import amber_to_lammps_mcp as a2l_mcp
 from amber_to_lammps import amber2lammps
+from validation.amber_protein_water_ions.prepare_shake_data import prepare as prepare_shake_data
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ETHANOL_PRMTOP = os.path.join(HERE, "ethanol.prmtop")
@@ -85,6 +87,32 @@ class McpConversionTests(ConversionTestCase):
         )
         self.assertTrue(os.path.isfile(result["data_file"]))
         self.assertTrue(os.path.isfile(result["parameter_file"]))
+        self.assertEqual(result["summary"]["atoms"], 9)
+        self.assertEqual(result["summary"]["validation_status"], "not_run")
+        self.assertTrue(os.path.isfile(result["summary"]["provenance_file"]))
+        self.assertEqual(len(result["summary"]["provenance_sha256"]), 64)
+
+    def test_provenance_records_hashes_without_claiming_validation(self):
+        amber2lammps(
+            "out.data", "out.parm", [ETHANOL_PRMTOP], [1], ETHANOL_PDB, [0],
+            provenance_file="out.provenance.json",
+        )
+        with open("out.provenance.json", encoding="utf-8") as stream:
+            record = json.load(stream)
+        self.assertEqual(record["schema_version"], "1.0")
+        self.assertEqual(record["conversion"]["status"], "success")
+        self.assertEqual(record["conversion"]["counts"]["atoms"], 9)
+        self.assertEqual(record["validation"]["status"], "not_run")
+        self.assertEqual(len(record["inputs"]["pdb"]["sha256"]), 64)
+        self.assertEqual(len(record["outputs"]["lammps_data"]["sha256"]), 64)
+
+    def test_provenance_cannot_overwrite_inputs_or_outputs(self):
+        with self.assertRaisesRegex(ValueError, "must not overwrite"):
+            amber2lammps(
+                "out.data", "out.parm", [ETHANOL_PRMTOP], [1], ETHANOL_PDB, [0],
+                provenance_file="out.data",
+            )
+        self.assertFalse(os.path.exists("out.data"))
 
     def test_mcp_helper_rejects_mismatched_lists_before_writing(self):
         with self.assertRaisesRegex(ValueError, "must have the same length"):
@@ -97,6 +125,26 @@ class McpConversionTests(ConversionTestCase):
                 parameter_file="mcp.parm",
             )
         self.assertFalse(os.path.exists("mcp.data"))
+
+
+class Tip3pShakePreparationTests(ConversionTestCase):
+    """AMBER water triangles become the topology required by LAMMPS SHAKE."""
+
+    def test_hh_bonds_become_hoh_angles(self):
+        fixture = os.path.join(HERE, "validation", "amber_protein_water_ions", "amber2lammps")
+        count = prepare_shake_data(
+            os.path.join(fixture, "system.data"),
+            os.path.join(fixture, "system.parm"),
+            "shake.data", "shake.parm",
+        )
+        self.assertEqual(count, 380)
+        sections = read_sections("shake.data")
+        self.assertFalse(any(line.split()[1] == "9" for line in sections["Bonds"]))
+        self.assertEqual(
+            sum(line.split()[1] == "12" for line in sections["Angles"]), 380
+        )
+        with open("shake.parm") as stream:
+            self.assertIn("angle_coeff 12 0.0000 104.490", stream.read())
 
 
 class AmberFamilyScalingTests(ConversionTestCase):

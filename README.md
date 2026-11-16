@@ -1,8 +1,8 @@
 <div align="center">
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
-  <h3>Safer conversions. Human-readable types. Independently validated energies.</h3>
+  <h3>Convert once. Prove exactly what happened. Share only the context an AI needs.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
-  <p><strong>🤖 NEW MCP server · 🛡️ 38 automated tests · ⚡ Cached LAMMPS CI builds · 📦 Ready from PyPI</strong></p>
+  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 41 automated tests · ⚡ Cached scientific CI</strong></p>
 </div>
 
 ---
@@ -27,6 +27,7 @@ Python utility that converts AMBER `.prmtop`/PDB files to LAMMPS data/parameter 
 - **✅ Validation-First**: Clear errors for missing files, mismatched list lengths, and PDB atom-count/order issues
 - **🔄 CLI + Python API**: Same conversion engine from the command line or `amber2lammps(...)` in Python
 - **🤖 MCP Server**: Let Claude, Codex, and other MCP clients run local conversions through a structured tool
+- **🧾 Provenance-first automation**: Record hashes, versions, force-field decisions, charge adjustments, and output summaries once; MCP clients receive a compact summary instead of consuming large topology and log files
 - **📦 Debug Artifacts (`--keep-temp`)**: Optionally write `<stem>.pairs.txt`, `<stem>.bonds.txt`, `<stem>.angles.txt`, `<stem>.dihedrals.txt` beside the data file, grouped by topology
 
 ## What This Tool Does
@@ -160,9 +161,28 @@ Configure an MCP client to launch the installed stdio server:
 ```
 
 The server exposes a `convert` tool accepting PDB/topology input paths, molecule counts, target
-charges, output paths, and the converter's main options. It writes files only to the paths supplied
-in the tool call. Existing files at the selected data and parameter paths are replaced, so review
-those paths before approving a conversion.
+charges, output paths, and the converter's main options. Every MCP conversion writes a versioned
+`<data-stem>.provenance.json` record by default and returns a compact summary with its path and
+SHA-256 digest. This keeps routine AI responses small; a client only needs to read the full record
+or simulation files when investigating details. Pass `provenance_file` to select another path.
+Existing files at the selected output paths are replaced, so review those paths before approving a
+conversion.
+
+### Reproducible provenance
+
+The CLI can write the same machine-readable record used by MCP:
+
+```bash
+amber-to-lammps system.data system.parm system.pdb \
+  -t ligand.prmtop -c 1 --charges 0 \
+  --provenance system.provenance.json
+```
+
+The record includes input/output SHA-256 hashes, software versions, topology counts, raw and target
+charges, detected SCEE/SCNB profiles, nonbonded strategy, box dimensions, and conversion warnings.
+It deliberately reports validation as `not_run`: a successful conversion is not by itself evidence
+of agreement with AMBER `sander`. The schema is published at
+[`docs/provenance.schema.json`](docs/provenance.schema.json).
 
 ### PACKMOL 
 

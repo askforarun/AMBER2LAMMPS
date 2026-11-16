@@ -7,7 +7,7 @@ converter and its Python 3.9+ installation independent of MCP.
 import contextlib
 import io
 import os
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from amber_to_lammps import amber2lammps
 
@@ -24,6 +24,7 @@ def convert_amber_system(
     keep_debug_files: bool = False,
     c4_cutoff: float = 9.0,
     c4_coulomb: str = "long",
+    provenance_file: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Convert AMBER topology/PDB inputs and return a structured result.
 
@@ -44,9 +45,12 @@ def convert_amber_system(
     if missing:
         raise ValueError("Input file(s) not found: " + ", ".join(missing))
 
+    if provenance_file is None:
+        provenance_file = os.path.splitext(data_file)[0] + ".provenance.json"
+
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
-        amber2lammps(
+        conversion = amber2lammps(
             data_file=data_file,
             param_file=parameter_file,
             topologies=topologies,
@@ -59,6 +63,8 @@ def convert_amber_system(
             c4_cutoff=c4_cutoff,
             c4_coulomb=c4_coulomb,
             use_typelabels=type_labels,
+            provenance_file=provenance_file,
+            provenance_interface="mcp",
         )
 
     messages = [line for line in output.getvalue().splitlines() if line.strip()]
@@ -76,6 +82,7 @@ def convert_amber_system(
         "parameter_file": os.path.abspath(parameter_file),
         "debug_files": debug_files,
         "messages": messages,
+        "summary": conversion["summary"],
     }
 
 
@@ -111,6 +118,7 @@ def create_server():
         keep_debug_files: bool = False,
         c4_cutoff: float = 9.0,
         c4_coulomb: str = "long",
+        provenance_file: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Convert AMBER files to LAMMPS files on the local machine.
 
@@ -131,6 +139,7 @@ def create_server():
                 keep_debug_files=keep_debug_files,
                 c4_cutoff=c4_cutoff,
                 c4_coulomb=c4_coulomb,
+                provenance_file=provenance_file,
             )
         except Exception as exc:
             raise ToolError(str(exc)) from exc

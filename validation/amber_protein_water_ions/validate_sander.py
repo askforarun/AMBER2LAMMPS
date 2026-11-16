@@ -141,6 +141,7 @@ def main():
         failures.append(f"force RMSE {force_rmse:g} > {FORCE_RMSE_TOLERANCE:g}")
     if failures:
         raise AssertionError("protein/water/ion validation failed:\n" + "\n".join(failures))
+    run([sys.executable, "prepare_shake_data.py"], cwd=HERE)
     run([lammps, "-in", "system_shake.input", "-log", "none"], cwd=LAMMPS)
     print("ff14SB/TIP3P/NaCl sander validation passed.")
 

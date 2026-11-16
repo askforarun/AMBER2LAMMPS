@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/askforarun/AMBER2LAMMPS/main/docs/provenance.schema.json",
+  "title": "AMBER2LAMMPS conversion provenance",
+  "type": "object",
+  "required": ["schema_version", "software", "inputs", "conversion", "outputs", "validation"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "recorded_at_utc": {"type": "string", "format": "date-time"},
+    "software": {"type": "object"},
+    "invocation": {"type": "object"},
+    "inputs": {"type": "object"},
+    "conversion": {
+      "type": "object",
+      "required": ["status", "nonbonded_strategy", "counts", "warnings"],
+      "properties": {
+        "status": {"const": "success"},
+        "nonbonded_strategy": {"type": "string"},
+        "counts": {"type": "object"},
+        "warnings": {"type": "array"}
+      }
+    },
+    "outputs": {"type": "object"},
+    "validation": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {"enum": ["not_run", "passed", "failed"]}
+      }
+    }
+  }
+}

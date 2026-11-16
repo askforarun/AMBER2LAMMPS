@@ -10,13 +10,14 @@ dihedral_style fourier
 pair_style lj/cut/coul/long 9.0 9.0
 pair_modify mix arithmetic tail yes table 0
 
-read_data system.data
-include system.parm
+read_data system_shake.data
+include system_shake.parm
 kspace_style pppm 1.0e-6
 
-# This fixture's HW-OW and HW-HW bonds are types 8 and 9. Constraining the
-# triangle reproduces rigid TIP3P geometry. Recheck type IDs for other inputs.
-fix rigid_tip3p all shake 1.0e-6 200 0 b 8 9
+# The preparation script replaces AMBER's H-H water bond with angle type 12.
+# Atom types 11 and 12 select only TIP3P oxygen and hydrogen in this fixture.
+group tip3p type 11 12
+fix rigid_tip3p tip3p shake 1.0e-6 200 0 b 8 a 12
 
 thermo 100
 run 0
