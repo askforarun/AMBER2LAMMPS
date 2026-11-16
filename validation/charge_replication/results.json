@@ -37,5 +37,5 @@
       "amber2lammps_neutral_target_total_e": -1.0000000688625832e-06
     }
   ],
-  "interpretation": "Charge-preserving conversion retains the per-template residual, so its system total grows linearly with the number of copies. AMBER2LAMMPS normalization removes that residual when the requested target is zero."
+  "interpretation": "Only one-template systems are converted. The larger totals are arithmetic projections: an unchanged per-template residual contributes N times that residual for N copies. AMBER2LAMMPS removes it when the required target is zero."
 }

@@ -710,12 +710,16 @@ comparison used by CI.
 
 A separate [charge-replication benchmark](validation/charge_replication/README.md)
 measures the raw epon charge in the topology, InterMol output and both raw-target
-and neutral-target AMBER2LAMMPS outputs. It shows reproducibly that preserving a
-`-0.002996 e` residual per template produces approximately `-2.996 e` after
-1,000 copies, while an explicit neutral target removes the accumulated residual.
-Charge preservation remains the appropriate setting for converter-to-converter
-energy validation; normalization is an optional, provenance-recorded modeling
-choice for replicated production systems.
+and neutral-target AMBER2LAMMPS outputs. It converts one template and then
+arithmetically projects its measured charge to larger copy counts; it does not
+convert replicated boxes. The measured `-0.002996 e` residual corresponds to
+approximately `-2.996 e` for 1,000 unchanged copies, while supplying zero as the
+required charge target removes the residual. Charge preservation remains the
+appropriate policy for converter-to-converter energy validation. AMBER2LAMMPS
+requires a per-template target and applies a uniform correction when it differs
+from the topology charge by more than `1e-6 e`; it warns above `0.01 e` per
+molecule. The decision is recorded automatically by MCP and by the CLI when
+`--provenance` is enabled.
 
 **Energy Comparison Results**
 

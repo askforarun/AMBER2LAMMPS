@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure how a per-template residual charge accumulates under replication."""
+"""Measure one-template charges and project totals by arithmetic copy count."""
 
 import argparse
 import contextlib
@@ -91,9 +91,10 @@ def generate_results():
         "amber2lammps_uniform_shift_per_atom_e": -source_charge / len(topology.atoms),
         "replication": rows,
         "interpretation": (
-            "Charge-preserving conversion retains the per-template residual, so its "
-            "system total grows linearly with the number of copies. AMBER2LAMMPS "
-            "normalization removes that residual when the requested target is zero."
+            "Only one-template systems are converted. The larger totals are arithmetic "
+            "projections: an unchanged per-template residual contributes N times that "
+            "residual for N copies. AMBER2LAMMPS removes it when the required target is "
+            "zero."
         ),
     }
 
