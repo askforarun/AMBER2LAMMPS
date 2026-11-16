@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       LAMMPS_COMMIT: 26e5f79b4e5aa77b65fc4fbf314b206bf0530b45
-      LAMMPS_CACHE_FLAVOR: molecule-extra_molecule-kspace-rigid-v2
+      LAMMPS_CACHE_FLAVOR: molecule-extra_molecule-kspace-rigid-lepton-v3
     steps:
       - uses: actions/checkout@v4
         with:
@@ -157,6 +157,7 @@ jobs:
             -D PKG_MOLECULE=on \
             -D PKG_EXTRA-MOLECULE=on \
             -D PKG_KSPACE=on \
+            -D PKG_LEPTON=on \
             -D PKG_RIGID=on
           cmake --build lammps-build --parallel 2
 
@@ -215,6 +216,13 @@ jobs:
           assert result["status"] == "passed", result
           assert "potential" in result["energies_kcal_mol"], result
           PY
+
+      - name: Validate 12-6-4 C4 output with LEPTON
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
+          python validation/c4_lepton/validate.py \
+            --lammps lammps-build/lmp
 
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:
