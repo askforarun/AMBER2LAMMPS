@@ -93,6 +93,7 @@ Cartesian forces.
 - [Scientific mapping and extension model](docs/scientific-design.md)
 - [Reproducible `sander` validation](validation/amber_family_mix/README.md)
 - [Standalone GLYCAM06j-1 `sander` validation](validation/glycam_glucose/README.md)
+- [ff14SB + GAFF2 protein-ligand `sander` validation](validation/protein_ligand/README.md)
 - [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
 - [AMBER-family development roadmap](docs/amber-family-roadmap.md)
 - [Research-use and adoption record](docs/research-use.md)

@@ -169,6 +169,9 @@ jobs:
           python validation/glycam_glucose/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
+          python validation/protein_ligand/validate_sander.py \
+            --sander "$CONDA_PREFIX/bin/sander" \
+            --lammps lammps-build/lmp
           python validation/amber_protein_water_ions/validate_sander.py \
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp

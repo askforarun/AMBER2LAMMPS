@@ -35,7 +35,7 @@ independent AMBER engine.
 | Triclinic `CRYST1` cells | **Unsupported** | Clear error; tilt factors are not inferred from PDB coordinates |
 | ff14SB capped peptide | **Validated** | ACE-ALA-NME energy and all Cartesian forces compared with `sander` |
 | Larger folded proteins | Planned | The peptide covers ff14SB terms, but a representative folded-protein fixture remains desirable |
-| Protein + GAFF2 ligand | Planned | Requires protein fixture and mixed-system validation |
+| Protein + GAFF2 ligand | **Validated** for non-covalent ff14SB peptide + ethanol | Energy and all Cartesian forces compared with `sander` in `validation/protein_ligand/` |
 | Protein + GLYCAM carbohydrate | Planned | Requires protein fixture and linkage/non-covalent cases |
 | TIP3P water with Na+/Cl- | **Validated** | 380-water periodic ff14SB fixture; energy/force validation and SHAKE example |
 | Covalent bonds between separate input topologies | **Unsupported** | Input topologies are independent molecule templates; cross-topology connectivity is not invented |
