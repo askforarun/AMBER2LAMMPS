@@ -5,6 +5,7 @@ import argparse
 import math
 import re
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -39,6 +40,7 @@ def main():
     if not lammps.is_file():
         parser.error(f"LAMMPS executable not found: {lammps}")
 
+    sys.path.insert(0, str(ROOT))
     from amber_to_lammps import amber2lammps
 
     with tempfile.TemporaryDirectory(prefix="amber2lammps-c4-") as tmp_name:
