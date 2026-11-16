@@ -5,6 +5,10 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ## [Unreleased]
 
+- Added standalone GLYCAM06j-1 glucose energy-and-force validation against
+  AmberTools `sander` and corrected uniform-system output to select AMBER's
+  Lorentz-Berthelot mixing rule explicitly.
+
 ### Added
 
 - Experimental AMBER-family conversion with topology-derived SCEE/SCNB 1-4

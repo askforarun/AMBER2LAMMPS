@@ -1358,6 +1358,10 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
             flammpsparm.write("\n# Explicit AMBER nonbonded I-J coefficient matrix\n")
             flammpsparm.write("\n".join(build_explicit_pair_coeff_lines(top_ctx, c4_cutoff, c4_coulomb)) + "\n")
         else:
+            flammpsparm.write(
+                "\n# AMBER uses Lorentz-Berthelot mixing\n"
+                "pair_modify mix arithmetic\n"
+            )
             for topo_idx, topo_name in enumerate(topologies):
                 flammpsparm.write(f"\n# Topology {topo_idx+1}: {topo_name}\n")
                 flammpsparm.write("# Nonbonded\n")

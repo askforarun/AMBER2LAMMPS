@@ -23,9 +23,9 @@ independent AMBER engine.
 |---|---|---|
 | GAFF2 + GLYCAM non-covalent mixture | **Validated** | `validation/amber_family_mix/`; required `sander/LAMMPS energy and force validation` CI job |
 | GAFF2 small molecules | Regression-tested | Ethanol, epon, aspirin, benzene and mixed-molecule fixtures; GAFF2 terms are also exercised by the validated mixed system |
-| GLYCAM carbohydrates | Regression-tested | Neutral glucose fixture; GLYCAM terms are exercised by the validated mixed system |
+| GLYCAM carbohydrates | **Validated** for standalone glucose | Pure GLYCAM06j-1 energy/force comparison in `validation/glycam_glucose/`; GLYCAM terms are also exercised by the validated mixed system |
 | Mixed SCEE/SCNB profiles | **Validated** for GAFF2 + GLYCAM | Repeated `pair_style hybrid` instances, per-instance `pair_modify ... special`, complete I-J matrix |
-| Uniform SCEE/SCNB profile | Regression-tested | Active proper-dihedral values are extracted from the topology and emitted as `special_bonds` |
+| Uniform SCEE/SCNB profile | **Validated** for GLYCAM06j-1 and ff14SB | Active proper-dihedral values are extracted from the topology and emitted as `special_bonds` |
 | Lorentz-Berthelot LJ mixing | **Validated** in the mixed fixture | Explicit like-like and cross-family energy/force comparison |
 | AMBER off-diagonal A/B overrides | Regression-tested | Detected and emitted as explicit I-J coefficients |
 | 12-6-4 C4 terms | Implemented for one parameterized topology | `hybrid/overlay` + Lepton output and unit tests; multiple topology files fail closed because cross-topology C4 terms are undefined; requires LAMMPS LEPTON |

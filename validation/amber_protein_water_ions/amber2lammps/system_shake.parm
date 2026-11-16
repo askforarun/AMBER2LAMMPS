@@ -3,6 +3,9 @@
 # AMBER 1-4 nonbonded scaling read from the topology
 special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333
 
+# AMBER uses Lorentz-Berthelot mixing
+pair_modify mix arithmetic
+
 # Topology 1: /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_protein_water_ions/source/system.prmtop
 # Nonbonded
 pair_coeff 3 3 0.086 3.3996695084235347 # C

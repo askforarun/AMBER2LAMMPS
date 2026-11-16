@@ -264,6 +264,7 @@ class AmberFamilyScalingTests(ConversionTestCase):
             "special_bonds lj 0.0 0.0 0.5 coul 0.0 0.0 0.8333333333",
             parameters,
         )
+        self.assertIn("pair_modify mix arithmetic", parameters)
 
     def test_gaff2_glycam_mixture_uses_hybrid_profiles_and_complete_matrix(self):
         amber2lammps(

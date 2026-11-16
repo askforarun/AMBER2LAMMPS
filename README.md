@@ -92,6 +92,7 @@ Cartesian forces.
 - [Supported-system and validation matrix](docs/support-matrix.md)
 - [Scientific mapping and extension model](docs/scientific-design.md)
 - [Reproducible `sander` validation](validation/amber_family_mix/README.md)
+- [Standalone GLYCAM06j-1 `sander` validation](validation/glycam_glucose/README.md)
 - [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
 - [AMBER-family development roadmap](docs/amber-family-roadmap.md)
 - [Research-use and adoption record](docs/research-use.md)
@@ -495,7 +496,7 @@ For systems containing multiple molecule types (e.g., drug + solvent mixtures), 
 
 GAFF2 normally uses SCEE/SCNB 1.2/2.0, while GLYCAM uses 1.0/1.0. The converter detects those values from the topologies and generates two instances of `lj/cut/coul/long` under `pair_style hybrid`. Like-profile interactions use their own instance; cross-family nonbonded interactions use explicit Lorentz–Berthelot coefficients. Do not replace the generated `pair_style`, `pair_modify`, `special_bonds`, or `pair_coeff` commands in the parameter include.
 
-A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. The separate ff14SB/TIP3P/NaCl fixture covers a capped protein, explicit solvent and ions. The precise supported scope and remaining combinations are listed in the support matrix.
+A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. A separate [`validation/glycam_glucose/`](validation/glycam_glucose/README.md) fixture validates standalone GLYCAM06j-1 glucose. The ff14SB/TIP3P/NaCl fixture covers a capped protein, explicit solvent and ions. The precise supported scope and remaining combinations are listed in the support matrix.
 
 ### Mixed Molecular System (Multiple Topologies)
 
@@ -668,12 +669,12 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 ## Validation with sander and InterMol
 
 The required GitHub Actions reference check uses AmberTools **`sander`** as the
-AMBER authority. CI regenerates both the GAFF2 + GLYCAM mixture and the
+AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 + GLYCAM mixture, and the
 ff14SB/TIP3P/NaCl system, runs each engine on identical coordinates and cells,
 and compares bonded, van der Waals, electrostatic and total energies plus every
 Cartesian force component. Complete runnable fixtures and explicit tolerances
-are in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md)
-and
+are in [`validation/glycam_glucose/`](validation/glycam_glucose/README.md),
+[`validation/amber_family_mix/`](validation/amber_family_mix/README.md), and
 [`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md).
 
 InterMol remains a useful secondary converter-to-converter cross-check and its
