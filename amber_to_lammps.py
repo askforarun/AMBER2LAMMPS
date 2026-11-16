@@ -982,7 +982,10 @@ def build_mixed_scaling_pair_coeff_lines(top_ctx, cutoff, coulomb):
         )
 
     atom_types = sorted(top_ctx.atom_type_mapping, key=top_ctx.atom_type_mapping.get)
-    default_instance = 1
+    # Cross-profile pairs are non-covalent because input topologies are
+    # independent templates. Assign them to the same instance that supplies
+    # the required fractional global baseline rather than relying on ordering.
+    default_instance = instance_by_profile[baseline]
     for left_pos, left_type in enumerate(atom_types):
         for right_type in atom_types[left_pos:]:
             left_id = top_ctx.atom_type_mapping[left_type]

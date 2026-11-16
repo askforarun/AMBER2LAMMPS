@@ -2,7 +2,7 @@
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Convert once. Prove exactly what happened. Share only the context an AI needs.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
-  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 52 automated tests · ⚡ Cached scientific CI</strong></p>
+  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 55 automated tests · ⚡ Cached scientific CI</strong></p>
 </div>
 
 ---
@@ -492,9 +492,17 @@ for mol in molecules:
 
 For systems containing multiple molecule types (e.g., drug + solvent mixtures), use the following workflow.
 
-### GAFF2 + GLYCAM mixed scaling (experimental)
+### Validated GAFF2 + GLYCAM mixed scaling
 
 GAFF2 normally uses SCEE/SCNB 1.2/2.0, while GLYCAM uses 1.0/1.0. The converter detects those values from the topologies and generates two instances of `lj/cut/coul/long` under `pair_style hybrid`. Like-profile interactions use their own instance; cross-family nonbonded interactions use explicit Lorentz–Berthelot coefficients. Do not replace the generated `pair_style`, `pair_modify`, `special_bonds`, or `pair_coeff` commands in the parameter include.
+
+Mixed-profile conversion requires each force-field family to remain a separate
+topology template, as in `--topologies ligand.prmtop carbohydrate.prmtop`.
+A single combined `prmtop` containing multiple active SCEE/SCNB profiles is
+rejected because one topology cannot be assigned multiple global
+`special_bonds` behaviors safely. Separate topology templates also mean there
+is no covalent cross-family 1-4 path; covalently linked cross-family systems
+remain unsupported until validated independently.
 
 A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. A separate [`validation/glycam_glucose/`](validation/glycam_glucose/README.md) fixture validates standalone GLYCAM06j-1 glucose. The ff14SB/TIP3P/NaCl fixture covers a capped protein, explicit solvent and ions. The precise supported scope and remaining combinations are listed in the support matrix.
 

@@ -24,7 +24,7 @@ independent AMBER engine.
 | GAFF2 + GLYCAM non-covalent mixture | **Validated** | `validation/amber_family_mix/`; required `sander/LAMMPS energy and force validation` CI job |
 | GAFF2 small molecules | Regression-tested | Ethanol, epon, aspirin, benzene and mixed-molecule fixtures; GAFF2 terms are also exercised by the validated mixed system |
 | GLYCAM carbohydrates | **Validated** for standalone glucose | Pure GLYCAM06j-1 energy/force comparison in `validation/glycam_glucose/`; GLYCAM terms are also exercised by the validated mixed system |
-| Mixed SCEE/SCNB profiles | **Validated** for GAFF2 + GLYCAM | Repeated `pair_style hybrid` instances, per-instance `pair_modify ... special`, complete I-J matrix |
+| Mixed SCEE/SCNB profiles | **Validated** for separate GAFF2 + GLYCAM templates | Repeated `pair_style hybrid` instances, per-instance `pair_modify ... special`, complete I-J matrix; a combined mixed-profile `prmtop` fails closed |
 | Uniform SCEE/SCNB profile | **Validated** for GLYCAM06j-1 and ff14SB | Active proper-dihedral values are extracted from the topology and emitted as `special_bonds` |
 | Lorentz-Berthelot LJ mixing | **Validated** in the mixed fixture | Explicit like-like and cross-family energy/force comparison |
 | AMBER off-diagonal A/B overrides | Regression-tested | Detected and emitted as explicit I-J coefficients |
@@ -53,3 +53,8 @@ A capability moves to **Validated** only when its fixture:
 6. runs in CI when its dependencies can be installed reproducibly.
 
 Passing a LAMMPS syntax check alone is not scientific validation.
+
+Topologies without an active proper dihedral return no SCEE/SCNB profile. This
+is expected for water, monatomic ions, and other models with no 1-4 owner; no
+`special_bonds` command is needed for interactions that do not exist. A
+topology that contains active 1-4 owners with conflicting profiles is rejected.

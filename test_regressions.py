@@ -241,6 +241,45 @@ class AmberFamilyScalingTests(ConversionTestCase):
         self.assertAlmostEqual(scaling.coulomb_weight, 1.0 / 1.2)
         self.assertAlmostEqual(scaling.lj_weight, 0.5)
 
+    def test_multiple_active_profiles_inside_one_topology_fail_closed(self):
+        term_gaff = types.SimpleNamespace(scee=1.2, scnb=2.0)
+        term_glycam = types.SimpleNamespace(scee=1.0, scnb=1.0)
+        parm = types.SimpleNamespace(dihedrals=[
+            types.SimpleNamespace(improper=False, ignore_end=False, type=term_gaff),
+            types.SimpleNamespace(improper=False, ignore_end=False, type=term_glycam),
+        ])
+        with self.assertRaisesRegex(
+            a2l.UnsupportedScalingError,
+            "combined.prmtop uses multiple active 1-4 scaling profiles",
+        ):
+            a2l.topology_14_scaling(parm, "combined.prmtop")
+
+    def test_mixed_scaling_with_c4_fails_closed(self):
+        context = types.SimpleNamespace(has_c4=True)
+        with self.assertRaisesRegex(
+            a2l.UnsupportedScalingError,
+            "mixed SCEE/SCNB profiles with 12-6-4",
+        ):
+            a2l.build_mixed_scaling_pair_coeff_lines(context, 9.0, "long")
+
+    def test_cross_profile_pairs_use_fractional_baseline_instance(self):
+        glycam = a2l.SpecialBondScaling(scee=1.0, scnb=1.0)
+        gaff = a2l.SpecialBondScaling(scee=1.2, scnb=2.0)
+        context = types.SimpleNamespace(
+            has_c4=False,
+            scaling_profiles=[glycam, gaff],
+            atom_type_mapping={"Cg": 1, "c3": 2},
+            type_scaling_profiles={"Cg": glycam, "c3": gaff},
+            nonbonded_params={
+                "Cg": {"lj_epsilon": 0.1, "lj_sigma": 3.4},
+                "c3": {"lj_epsilon": 0.2, "lj_sigma": 3.2},
+            },
+            raw_pair_params={},
+        )
+        lines = a2l.build_mixed_scaling_pair_coeff_lines(context, 9.0, "long")
+        cross = next(line for line in lines if line.endswith("# Cg-c3"))
+        self.assertIn("lj/cut/coul/long 2", cross)
+
     def test_improper_zero_placeholders_do_not_define_scaling(self):
         parm = pmd.load_file(os.path.join(HERE, "epon.prmtop"))
         scaling = a2l.topology_14_scaling(parm, "epon")

@@ -31,6 +31,10 @@ Mixed-profile output assigns every I-J coefficient explicitly. A pair of atom
 types from the same topology profile uses that profile's hybrid instance.
 Cross-family atom types use the standard cross coefficient and do not require
 1-4 scaling because separate topology templates have no covalent 1-4 path.
+Consequently, mixed-profile conversion accepts separate topology templates;
+a combined topology containing multiple active profiles fails closed. A
+topology with no active proper-dihedral 1-4 owner—such as water or a monatomic
+ion—has no scaling profile because there is no corresponding 1-4 interaction.
 
 ## Fail-closed rules
 

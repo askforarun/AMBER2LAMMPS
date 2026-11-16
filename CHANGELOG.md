@@ -11,8 +11,8 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ### Added
 
-- Experimental AMBER-family conversion with topology-derived SCEE/SCNB 1-4
-  scaling.
+- AMBER-family conversion with topology-derived SCEE/SCNB 1-4 scaling and
+  explicit fail-closed boundaries.
 - Exact non-covalent GAFF2/GLYCAM mixed scaling using repeated LAMMPS
   `pair_style hybrid` instances, per-instance `pair_modify ... special`
   settings, and an explicit I-J coefficient matrix.

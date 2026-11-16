@@ -22,7 +22,7 @@ behavior.
 2. Add redistributable GLYCAM and AMBER protein fixtures with documented
    generation recipes and provenance. (GLYCAM and ff14SB peptide fixtures added.)
 3. Represent different GAFF2 and GLYCAM 1–4 scaling exactly in a non-covalent
-   mixed system. (Implemented experimentally with repeated hybrid instances.)
+   mixed system. (Implemented and validated with repeated hybrid instances.)
 4. Validate pure GAFF2, pure GLYCAM, pure protein, protein–ligand,
    protein–carbohydrate, GAFF2–GLYCAM, and three-family mixtures.
 5. Add explicit solvent, ions, periodic cells, and HMR variants. (TIP3P,
@@ -40,8 +40,10 @@ system now writes repeated `pair_style hybrid` instances with per-instance 1–4
 weights and a complete explicit I–J matrix. The ethanol/glucose fixture is
 validated directly against AmberTools `sander`, including energy components
 and all Cartesian forces. With matched PME settings and Coulomb conversion
-factors, total energy differs by about 0.00007 kcal/mol and force RMSE is about
-0.0134 kcal/mol/Angstrom. Mixed scaling with 12-6-4 terms remains fail-closed.
+factors, total energy differs by 0.00010 kcal/mol, maximum force-component
+difference is 0.000543 kcal/mol/Angstrom, and force RMSE is 0.0000817
+kcal/mol/Angstrom. Standalone GLYCAM06j-1 glucose is independently validated.
+Mixed scaling with 12-6-4 terms remains fail-closed.
 
 ## Publication target
 
