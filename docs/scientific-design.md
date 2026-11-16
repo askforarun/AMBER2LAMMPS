@@ -13,6 +13,14 @@ AMBER2LAMMPS solves this recurring interoperability problem by deriving the
 model from each `.prmtop`, selecting an explicit LAMMPS representation, and
 failing before output when it cannot preserve a term.
 
+Charge handling is explicit rather than implicit. Preserving a topology's raw
+charges is required for direct engine comparisons, while a requested molecular
+charge applies a uniform per-atom correction. The reproducible
+[`validation/charge_replication/`](../validation/charge_replication/README.md)
+benchmark demonstrates that an uncorrected per-template residual grows linearly
+under replication and records the trade-off between preservation and
+normalization.
+
 ## Scientific mapping
 
 | AMBER concept | LAMMPS representation |
