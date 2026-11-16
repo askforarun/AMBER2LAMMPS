@@ -38,7 +38,7 @@ independent AMBER engine.
 | Protein + GAFF2 ligand | **Validated** for non-covalent ff14SB peptide + ethanol | Energy and all Cartesian forces compared with `sander` in `validation/protein_ligand/` |
 | Protein + GLYCAM carbohydrate | Planned | Requires protein fixture and linkage/non-covalent cases |
 | TIP3P water with Na+/Cl- | **Validated** | 380-water periodic ff14SB fixture; energy/force validation and SHAKE example |
-| Covalent bonds between separate input topologies | **Unsupported** | Input topologies are independent molecule templates; cross-topology connectivity is not invented |
+| Covalent bonds between separate input topologies | **Not represented or automatically detected** | Input topologies are independent molecule templates; PDB proximity alone cannot establish intended covalent connectivity |
 | Reactive, polarizable or many-body models | Out of scope | The converter targets classical fixed-charge AMBER-family topologies |
 
 ## Validation policy

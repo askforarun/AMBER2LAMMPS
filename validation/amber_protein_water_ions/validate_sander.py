@@ -2,6 +2,7 @@
 """Validate ff14SB + TIP3P + NaCl conversion against AmberTools sander."""
 
 import argparse
+import json
 import math
 from pathlib import Path
 import re
@@ -18,16 +19,10 @@ ROOT = HERE.parents[1]
 SOURCE = HERE / "source"
 AMBER = HERE / "sander"
 LAMMPS = HERE / "amber2lammps"
-TOLERANCES = {
-    "bond": 5.0e-4,
-    "angle": 5.0e-4,
-    "dihedral": 5.0e-4,
-    "vdw": 2.0e-2,
-    "coulomb": 1.0e-2,
-    "potential": 3.0e-2,
-}
-FORCE_MAX_TOLERANCE = 1.0e-2
-FORCE_RMSE_TOLERANCE = 1.0e-3
+EXPECTED = json.loads((HERE / "expected_results.json").read_text())
+TOLERANCES = EXPECTED["tolerances"]
+FORCE_MAX_TOLERANCE = TOLERANCES["force_max_kcal_per_mol_angstrom"]
+FORCE_RMSE_TOLERANCE = TOLERANCES["force_rmse_kcal_per_mol_angstrom"]
 
 
 def run(command, cwd=HERE):
@@ -127,7 +122,7 @@ def main():
     for component, reference in amber.items():
         candidate = lammps_values[component]
         difference = abs(reference - candidate)
-        tolerance = TOLERANCES[component]
+        tolerance = TOLERANCES[f"{component}_energy_kcal_per_mol"]
         print(f"{component:<12} {reference:>14.7f} {candidate:>14.7f} {difference:>14.7f} {tolerance:>12.7f}")
         if difference > tolerance:
             failures.append(f"{component} difference {difference:g} > {tolerance:g}")

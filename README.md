@@ -174,8 +174,8 @@ The server exposes two tools:
   warning codes, and a `lammps` setup block describing the include file, `special_bonds`, whether the
   include sets `pair_style`, and required LAMMPS packages. Use `detail="full"` only when the complete
   provenance record and human-readable converter messages are needed.
-- `check_lammps_run0` executes a bounded LAMMPS `run 0`, verifies the data and parameter hashes
-  first, and returns only energy terms and a compact error. The generated input and complete LAMMPS
+- `check_lammps_run0` executes a bounded LAMMPS `run 0`, checks the data and parameter hashes for
+  accidental changes, rejects commands outside the converter's declarative allowlist, and returns only energy terms and a compact error. The generated input and complete LAMMPS
   output stay on disk and the validation result is added to provenance. Configure the executable
   when starting the server, for example `AMBER2LAMMPS_LAMMPS=/path/to/lmp`.
 
@@ -184,7 +184,9 @@ existing files are refused unless the tool call explicitly sets `overwrite=true`
 writes a versioned `<data-stem>.provenance.json` record. Conversion and validation calls are
 serialized so concurrent requests cannot mix messages or overwrite one another. These defaults let
 an AI client convert and validate a system without loading large topology, data, or log files into
-its context.
+its context. Output names use the restricted character set `A-Z`, `a-z`, `0-9`, `.`, `_`, `-`, and
+`/`; this prevents paths from introducing commands into generated LAMMPS input. Because validation
+shares the conversion lock, a long `run 0` temporarily queues other MCP conversions.
 
 ### Reproducible provenance
 
@@ -291,7 +293,7 @@ Outputs: a LAMMPS data file (`<data_file>`, e.g., `data.lammps`) and a separate 
 4. **Coordinates, identity and box**: Coordinates come from the combined PDB. The sequential PDB atom names are checked against the topology assignment; bare element names remain compatible with generic Open Babel/Packmol output. A mismatch stops before output is written unless the unsafe override is explicitly selected. A valid orthogonal `CRYST1` record sets the box to `0…L` and overrides `--buffer`; coordinates outside those bounds rely on periodic LAMMPS boundaries to wrap them into the cell. Placeholder 1×1×1 cells are ignored, and a missing or unreadable record falls back to coordinate min/max expanded by `buffer`. Non-orthogonal cells and cells smaller than the coordinate span stop with a clear error.
 5. **Charge normalization**: For each topology, charges are uniformly shifted to hit the user-provided `--charges` target (tolerance 1e-6). Totals are checked across all molecules. A warning is always printed when the correction exceeds 0.01 e per molecule.
 6. **AMBER 1–4 scaling**: Active proper-dihedral SCEE and SCNB values are read from each topology. A uniform profile becomes one `special_bonds` command. A non-covalent mixture with different profiles, such as GAFF2 plus GLYCAM, uses repeated instances of `pair_style hybrid`, profile-specific `pair_modify ... special` settings, and an explicit complete I–J coefficient matrix. Improper and repeated-term placeholders do not define scaling. Mixed scaling with 12-6-4 terms is rejected because that combination is not yet implemented.
-7. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package. Multiple independent topology files containing C4 terms are rejected because their cross-topology C4 interactions are undefined; use one combined parameterized topology or a separately validated explicit model.
+7. **Nonbonded coefficients**: Standard topologies emit like–like `pair_coeff` lines and use LAMMPS mixing. Epsilon and sigma are derived directly from the full-precision AMBER A/B arrays, not rounded diagnostic text. If AMBER contains nonzero 12-6-4 `LENNARD_JONES_CCOEF` values or off-diagonal A/B overrides, the complete I–J matrix is emitted explicitly. For 12-6-4, the parameter include configures `hybrid/overlay` with Lepton expressions for `-C4/r^4`; LAMMPS must be built with its LEPTON package. Multiple independent topology files containing C4 terms are rejected because their cross-topology C4 interactions are undefined; use one combined parameterized topology or a separately validated explicit model.
 8. **Bonded coefficients (two-pass, deduplicated)**: A first pass iterates each topology **once** to build global type registries for bonds, angles, and dihedrals — keyed by rounded parameter values so that identical force constants across different topologies or molecule copies share one type ID. ParmEd dihedral phases are consumed in their documented degree unit. Dihedrals are grouped by atom-index tuple first to correctly merge multi-term Fourier companions into a single `dihedral_coeff` line, then deduplicated by parameter signature across symmetry-equivalent instances. A second pass writes non-empty connectivity sections for all replicas, referencing the pre-computed type IDs; empty sections are omitted so water-, ion-, and other small systems remain valid LAMMPS data files.
 9. **Export**: Data/parameter files are written. Only when `--keep-temp` is set, debug files are written beside the data file with its stem as a prefix (e.g. `results/system.data` → `results/system.pairs.txt`, `results/system.bonds.txt`, ...). Bare `pairs.txt`, `bonds.txt`, `angles.txt`, or `dihedrals.txt` files in the working directory are never touched. Like the data and parameter files, re-running with the same data file name replaces that run's previous debug files; the conversion stops before writing anything if a debug file name would coincide with the parameter file.
 
@@ -502,8 +504,9 @@ topology template, as in `--topologies ligand.prmtop carbohydrate.prmtop`.
 A single combined `prmtop` containing multiple active SCEE/SCNB profiles is
 rejected because one topology cannot be assigned multiple global
 `special_bonds` behaviors safely. Separate topology templates also mean there
-is no covalent cross-family 1-4 path; covalently linked cross-family systems
-remain unsupported until validated independently.
+is no represented covalent cross-family 1-4 path. The converter cannot infer
+intended cross-template bonds from atom proximity alone, so users must not use
+separate templates for covalently linked systems.
 
 A complete 33-atom example containing GAFF2 ethanol and GLYCAM glucose is in [`validation/amber_family_mix/`](validation/amber_family_mix/README.md). It includes the source topologies and PDB, Packmol and tleap recipes, generated LAMMPS data/parameter/input files, and an independent AMBER `sander` energy-and-force validation. A separate [`validation/glycam_glucose/`](validation/glycam_glucose/README.md) fixture validates standalone GLYCAM06j-1 glucose. The ff14SB/TIP3P/NaCl fixture covers a capped protein, explicit solvent and ions. The precise supported scope and remaining combinations are listed in the support matrix.
 

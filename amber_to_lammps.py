@@ -423,7 +423,8 @@ def detect_multi_mode(topologies, molecule_counts, pdb_file, verbose):
 def initialize_output_files(data_file, param_file, topologies, pdb_file):
     with open(data_file, "w") as f:
         f.write("LAMMPS data file from AMBER conversion\n")
-        f.write(f"#Source: {', '.join(topologies)}, {pdb_file}\n\n")
+        sources = [os.path.basename(path) for path in [*topologies, pdb_file]]
+        f.write(f"#Source: {', '.join(sources)}\n\n")
 
     with open(param_file, "w") as f:
         f.write("# Force field parameters generated from AMBER topologies\n\n")
@@ -465,26 +466,20 @@ def load_topology_context(topologies, verbose, amber_parm_cls, print_details):
         if verbose:
             print(f"  Found {len(parm.atoms)} atoms, {len(parm.bonds)} bonds, {len(parm.angles)} angles, {len(parm.dihedrals)} dihedrals")
 
-        lj_details = print_details(parm, "@1-{}".format(len(parm.atoms)))
-
-        for line in str(lj_details).split("\n"):
-            line = line.strip()
-            if not line or not line[0].isdigit():
-                continue
-
-            parts = line.split()
-            if len(parts) < 10:
-                continue
-
-            try:
-                atom_index = int(parts[0]) - 1
-                atom_type = parts[4]
-                atom_mass = float(parts[8])
-                lj_radius_amber = float(parts[6])
-                lj_depth_amber = float(parts[7])
-            except (ValueError, IndexError):
-                continue
-            lj_sigma = lj_radius_amber * (1 / (2 ** (1 / 6))) * 2
+        # Read the topology arrays directly. ParmEd's printDetails action
+        # formats radius and well depth to four decimal places, which silently
+        # discards precision before LAMMPS coefficients are generated.
+        for atom_index, atom in enumerate(parm.atoms):
+            atom_type = atom.type
+            atom_mass = float(atom.mass)
+            diagonal = _amber_lj_pair(parm, atom.nb_idx - 1, atom.nb_idx - 1)
+            if diagonal is None:
+                raise UnsupportedNonbondedError(
+                    f"Atom {atom_index + 1} (type {atom_type}) in topology {i+1} "
+                    "uses a missing or 10-12 H-bond nonbonded diagonal; only "
+                    "12-6 Lennard-Jones atom types are supported."
+                )
+            lj_depth_amber, lj_sigma = _ab_to_epsilon_sigma(*diagonal)
 
             # One LAMMPS type per distinct (AMBER type, LJ, mass) combination.
             # Atoms sharing an AMBER type name can differ in mass (hydrogen mass
@@ -1299,7 +1294,9 @@ def write_parameter_file(param_file, topologies, atom_types_per_topology, pair_c
                 "pair_modify mix arithmetic\n"
             )
             for topo_idx, topo_name in enumerate(topologies):
-                flammpsparm.write(f"\n# Topology {topo_idx+1}: {topo_name}\n")
+                flammpsparm.write(
+                    f"\n# Topology {topo_idx+1}: {os.path.basename(topo_name)}\n"
+                )
                 flammpsparm.write("# Nonbonded\n")
                 for atom_type in sorted(atom_types_per_topology[topo_idx]):
                     line = pair_coeff_map.get(atom_type)

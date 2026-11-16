@@ -2,15 +2,23 @@
   "system": "ACE-ALA-NME (ff14SB), 380 TIP3P waters, one Na+, one Cl-",
   "atoms": 1164,
   "tolerances": {
-    "bonded_energy_kcal_per_mol": 0.0005,
-    "coulomb_energy_kcal_per_mol": 0.01,
-    "force_max_kcal_per_mol_angstrom": 0.01,
-    "force_rmse_kcal_per_mol_angstrom": 0.001,
-    "potential_energy_kcal_per_mol": 0.03,
-    "vdw_energy_kcal_per_mol": 0.02
+    "bond_energy_kcal_per_mol": 0.0001,
+    "angle_energy_kcal_per_mol": 0.0001,
+    "dihedral_energy_kcal_per_mol": 0.0001,
+    "coulomb_energy_kcal_per_mol": 0.008,
+    "force_max_kcal_per_mol_angstrom": 0.002,
+    "force_rmse_kcal_per_mol_angstrom": 0.0001,
+    "potential_energy_kcal_per_mol": 0.02,
+    "vdw_energy_kcal_per_mol": 0.012
   },
   "observed": {
-    "force_max_difference": 0.005187597656245657,
-    "force_rmse": 0.00016401315961378702
+    "bond_energy_difference": 0.0000352,
+    "angle_energy_difference": 0.0000211,
+    "dihedral_energy_difference": 0.0000308,
+    "vdw_energy_difference": 0.00811,
+    "coulomb_energy_difference": 0.00620,
+    "potential_energy_difference": 0.01480,
+    "force_max_difference": 0.000291303,
+    "force_rmse": 0.000021176
   }
 }

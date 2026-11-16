@@ -41,15 +41,18 @@ Observed differences for the committed fixture are:
 | Bond energy | 0.0000352 kcal/mol |
 | Angle energy | 0.0000211 kcal/mol |
 | Dihedral energy | 0.0000308 kcal/mol |
-| van der Waals energy | 0.01145 kcal/mol |
+| van der Waals energy | 0.00811 kcal/mol |
 | Coulomb energy | 0.00620 kcal/mol |
-| Total potential energy | 0.01820 kcal/mol |
-| Maximum force component | 0.005188 kcal/mol/Angstrom |
-| Force RMSE | 0.000164 kcal/mol/Angstrom |
+| Total potential energy | 0.01480 kcal/mol |
+| Maximum force component | 0.000291 kcal/mol/Angstrom |
+| Force RMSE | 0.0000212 kcal/mol/Angstrom |
 
-The small van der Waals energy difference is consistent with the engines'
-analytical dispersion-tail implementations. Numerical tolerances are committed
-in `expected_results.json` and enforced by the validator.
+The remaining van der Waals difference is consistent with the engines'
+different analytical dispersion-tail implementations. The Coulomb comparison
+uses converged but different reciprocal-space algorithms (PME in `sander`,
+Ewald in LAMMPS), which explains why its energy difference is larger than the
+force RMSE. Numerical tolerances are committed once in `expected_results.json`
+and enforced directly by the validator.
 
 ## TIP3P constraints for dynamics
 

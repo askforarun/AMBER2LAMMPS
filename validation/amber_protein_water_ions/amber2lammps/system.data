@@ -1,5 +1,5 @@
 LAMMPS data file from AMBER conversion
-#Source: /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_protein_water_ions/source/system.prmtop, /Users/arunsrikanthsridhar/amber2lammps/AMBER2LAMMPS/validation/amber_protein_water_ions/source/system.pdb
+#Source: system.prmtop, system.pdb
 
 1164 atoms 
 12 atom types 
