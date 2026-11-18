@@ -1,0 +1,90 @@
+{
+  "fixtures": [
+    {
+      "amber_active_profiles": [
+        {
+          "coulomb_14_weight": 1.0,
+          "lj_14_weight": 1.0,
+          "scee_divisor": 1.0,
+          "scnb_divisor": 1.0
+        }
+      ],
+      "atoms": 24,
+      "gmso_global_electrostatics_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_global_lj_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_molecule_scaling_factors": {},
+      "label": "GLYCAM06j-1 glucose",
+      "preserved_exactly": false,
+      "topology": "validation/glycam_glucose/work/reference.prmtop"
+    },
+    {
+      "amber_active_profiles": [
+        {
+          "coulomb_14_weight": 0.8333333333333334,
+          "lj_14_weight": 0.5,
+          "scee_divisor": 1.2,
+          "scnb_divisor": 2.0
+        }
+      ],
+      "atoms": 31,
+      "gmso_global_electrostatics_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_global_lj_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_molecule_scaling_factors": {},
+      "label": "ff14SB peptide + GAFF2 ethanol",
+      "preserved_exactly": false,
+      "topology": "validation/protein_ligand/work/reference.prmtop"
+    },
+    {
+      "amber_active_profiles": [
+        {
+          "coulomb_14_weight": 1.0,
+          "lj_14_weight": 1.0,
+          "scee_divisor": 1.0,
+          "scnb_divisor": 1.0
+        },
+        {
+          "coulomb_14_weight": 0.8333333333333334,
+          "lj_14_weight": 0.5,
+          "scee_divisor": 1.2,
+          "scnb_divisor": 2.0
+        }
+      ],
+      "atoms": 33,
+      "gmso_global_electrostatics_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_global_lj_scaling": [
+        0.0,
+        0.0,
+        0.5
+      ],
+      "gmso_molecule_scaling_factors": {},
+      "label": "GAFF2 ethanol + GLYCAM06j-1 glucose",
+      "preserved_exactly": false,
+      "topology": "validation/amber_family_mix/amber_reference.prmtop"
+    }
+  ],
+  "gmso": "0.18.0",
+  "numpy": "2.5.5",
+  "parmed": "4.3.1",
+  "python": "3.14.0",
+  "scope": "ParmEd-to-GMSO AMBER 1-4 scaling import audit"
+}
