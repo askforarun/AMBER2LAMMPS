@@ -193,6 +193,14 @@ jobs:
             --sander "$CONDA_PREFIX/bin/sander" \
             --lammps lammps-build/lmp
 
+      - name: Validate HMR masses, forces, and TIP3P SHAKE
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
+          python validation/hmr_shake/validate.py \
+            --sander "$CONDA_PREFIX/bin/sander" \
+            --lammps lammps-build/lmp
+
       - name: Exercise compact MCP LAMMPS validation
         shell: micromamba-shell {0}
         run: |

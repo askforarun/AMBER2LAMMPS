@@ -95,6 +95,7 @@ Zn(II) 12-6-4 model in TIP3P water. They are compared directly with AmberTools
 - [Standalone GLYCAM06j-1 `sander` validation](validation/glycam_glucose/README.md)
 - [ff14SB + GAFF2 protein-ligand `sander` validation](validation/protein_ligand/README.md)
 - [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
+- [HMR mass and TIP3P SHAKE validation](validation/hmr_shake/README.md)
 - [Zn(II)/TIP3P 12-6-4 `sander` validation](validation/c4_sander/README.md)
 - [AMBER-family development roadmap](docs/amber-family-roadmap.md)
 - [Research-use and adoption record](docs/research-use.md)
@@ -684,12 +685,15 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 The required GitHub Actions reference check uses AmberTools **`sander`** as the
 AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 +
 GLYCAM mixture, the ff14SB/TIP3P/NaCl system, and a Li/Merz Zn(II) 12-6-4
-TIP3P system. It runs each engine on identical coordinates and cells and
+TIP3P system. The HMR variant additionally checks per-atom masses, total-mass
+preservation, and TIP3P SHAKE initialization. CI runs each engine on identical
+coordinates and cells and
 compares bonded, van der Waals, electrostatic and total energies plus every
 Cartesian force component. Complete runnable fixtures and explicit tolerances
 are in [`validation/glycam_glucose/`](validation/glycam_glucose/README.md),
 [`validation/amber_family_mix/`](validation/amber_family_mix/README.md),
 [`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md),
+[`validation/hmr_shake/`](validation/hmr_shake/README.md),
 and [`validation/c4_sander/`](validation/c4_sander/README.md).
 
 InterMol remains a useful secondary converter-to-converter cross-check and its

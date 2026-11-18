@@ -30,7 +30,7 @@ independent AMBER engine.
 | AMBER off-diagonal A/B overrides | Regression-tested | Detected and emitted as explicit I-J coefficients |
 | 12-6-4 C4 terms | **Validated** for Zn(II) in periodic TIP3P water | Li/Merz Zn(II) 12-6-4 energy and all Cartesian forces compared with `sander` in `validation/c4_sander/`; multiple topology files fail closed because cross-topology C4 terms are undefined; requires LAMMPS LEPTON |
 | Mixed SCEE/SCNB plus 12-6-4 | **Unsupported** | Fails before output because the combined representation is not yet validated |
-| Hydrogen mass repartitioning | Regression-tested | Per-atom mass variants and unchanged LJ parameters are tested |
+| Hydrogen mass repartitioning | **Validated** for an ff14SB peptide in TIP3P/NaCl | Every emitted mass is checked against the HMR topology; total mass, `sander` energies/forces, and LAMMPS TIP3P SHAKE initialization are validated in `validation/hmr_shake/`. Long-timescale integration and timestep selection are not benchmarked |
 | Orthorhombic periodic `CRYST1` cells | **Validated** in the mixed fixture | Same 30 Angstrom cell used by `sander` and LAMMPS |
 | Triclinic `CRYST1` cells | **Unsupported** | Clear error; tilt factors are not inferred from PDB coordinates |
 | ff14SB capped peptide | **Validated** | ACE-ALA-NME energy and all Cartesian forces compared with `sander` |

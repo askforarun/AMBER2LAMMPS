@@ -1,0 +1,29 @@
+{
+  "reference": {
+    "ambertools": "25",
+    "system": "HMR ACE-ALA-NME with 380 TIP3P waters and NaCl",
+    "changed_atom_masses": 18,
+    "total_mass_dalton": 7048.696,
+    "shake_water_count": 380,
+    "observed_differences": {
+      "bond_energy_kcal_per_mol": 0.0000352,
+      "angle_energy_kcal_per_mol": 0.0000211,
+      "dihedral_energy_kcal_per_mol": 0.0000308,
+      "vdw_energy_kcal_per_mol": 0.0081100,
+      "coulomb_energy_kcal_per_mol": 0.0062000,
+      "potential_energy_kcal_per_mol": 0.0148000,
+      "force_max_kcal_per_mol_angstrom": 0.000291303,
+      "force_rmse_kcal_per_mol_angstrom": 0.000021176
+    }
+  },
+  "tolerances": {
+    "bond_energy_kcal_per_mol": 0.0001,
+    "angle_energy_kcal_per_mol": 0.0001,
+    "dihedral_energy_kcal_per_mol": 0.0001,
+    "vdw_energy_kcal_per_mol": 0.012,
+    "coulomb_energy_kcal_per_mol": 0.008,
+    "potential_energy_kcal_per_mol": 0.02,
+    "force_max_kcal_per_mol_angstrom": 0.002,
+    "force_rmse_kcal_per_mol_angstrom": 0.0001
+  }
+}
