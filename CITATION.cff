@@ -3,7 +3,7 @@ message: "If you use this software, please cite it as below."
 authors:
 - family-names: "Sridhar"
   given-names: "Arun"
-title: "AMBER2LAMMPS: A validated, provenance-aware, and agent-ready framework for AMBER-family simulations in LAMMPS"
+title: "AMBER2LAMMPS: Validated conversion of AMBER-family topologies to LAMMPS"
 version: 1.1.0
 doi: 10.5281/zenodo.18114886
 date-released: 2026-11-15
@@ -24,7 +24,7 @@ keywords:
 - model context protocol
 references:
 - type: software
-  title: "AMBER2LAMMPS: A validated, provenance-aware, and agent-ready framework for AMBER-family simulations in LAMMPS"
+  title: "AMBER2LAMMPS: Validated conversion of AMBER-family topologies to LAMMPS"
   authors:
   - family-names: "Sridhar"
     given-names: "Arun"

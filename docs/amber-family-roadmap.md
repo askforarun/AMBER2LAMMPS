@@ -51,8 +51,8 @@ A periodic Li/Merz Zn(II) 12-6-4 TIP3P system is also validated against
 
 ## Publication target
 
-The intended JOSS title is **AMBER2LAMMPS: A validated, provenance-aware, and
-agent-ready framework for AMBER-family simulations in LAMMPS**. Here,
+The intended publication title is **AMBER2LAMMPS: Validated conversion of
+AMBER-family topologies to LAMMPS**. Here,
 "agent-ready" means a structured and bounded interface that exposes compact,
 machine-readable conversion and validation results while retaining complete
 provenance and large molecular artifacts on disk. It does not mean that the
