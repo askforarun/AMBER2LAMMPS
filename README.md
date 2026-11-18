@@ -2,7 +2,7 @@
   <h1>🚀 WHAT'S NEW IN AMBER2LAMMPS</h1>
   <h3>Convert once. Prove exactly what happened. Share only the context an AI needs.</h3>
   <p><strong>✨ Orthogonal <code>CRYST1</code> box support · 🏷️ Optional LAMMPS type labels · 🧪 AMBER <code>sander</code> energy-and-force validation ✨</strong></p>
-  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 55 automated tests · ⚡ Cached scientific CI</strong></p>
+  <p><strong>🧾 NEW provenance-first automation · 🤖 Token-efficient MCP summaries · 🛡️ 65 automated tests · ⚡ Cached scientific CI</strong></p>
 </div>
 
 ---
@@ -57,6 +57,7 @@ Run molecular dynamics simulations in **LAMMPS** using systems prepared in **AMB
 - [Citation](#citation)
 - [Platform Compatibility](#platform-compatibility)
 - [What You Need](#what-you-need)
+- [Quick Start](#quick-start)
 - [Installation](#installation)
   - [Install AMBER2LAMMPS](#install-amber2lammps)
   - [MCP Server](#mcp-server)
@@ -107,7 +108,7 @@ Zn(II) 12-6-4 model in TIP3P water. They are compared directly with AmberTools
 
 If you use this software in your research, please cite it as:
 
-**DOI:** [10.5281/zenodo.18114886](https://doi.org/10.5281/zenodo.18114886)
+**DOI:** [10.5281/zenodo.24348721](https://doi.org/10.5281/zenodo.24348721)
 
 ## Platform Compatibility
 
@@ -124,6 +125,15 @@ Tested and validated on:
 - **LAMMPS**: Build with `MOLECULE`, `KSPACE`, and `EXTRA-MOLECULE`; explicit-water dynamics examples also require `RIGID` for `fix shake` (`lmp -h` to confirm).
 
 **Note**: If you are using a PDB file generated from SMILES or another source, it is recommended that you pass in the PDB file with the `antechamber -dr yes` option. PDB format note: The converter uses fixed-column parsing of ATOM/HETATM records. PackMol-style PDBs work well; non-standard PDBs (e.g., unusual formatting, multi-model files) may fail or require cleanup.
+
+## Quick Start
+
+For a guided introduction with commands that run on the repository's supplied
+examples, see the [AMBER2LAMMPS tutorial PDF](tutorial/amber2lammps-tutorial.pdf).
+It covers installation, construction of combined PDB files, single-template and
+mixed GAFF2--GLYCAM conversion, LAMMPS `run 0`, the Python API, provenance, MCP
+tools, validation evidence, and supported boundaries. The editable
+[Beamer source](tutorial/amber2lammps-tutorial.tex) is included beside the PDF.
 
 ## Installation
 
