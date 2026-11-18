@@ -5,17 +5,21 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ## [Unreleased]
 
-- Added standalone GLYCAM06j-1 glucose energy-and-force validation against
-  AmberTools `sander` and corrected uniform-system output to select AMBER's
-  Lorentz-Berthelot mixing rule explicitly.
+## [1.2.0] - 2026-11-18
 
 ### Added
 
+- Standalone GLYCAM06j-1 glucose energy-and-force validation against
+  AmberTools `sander`.
 - A non-covalent ff14SB peptide + GAFF2 ligand energy-and-force validation
   fixture against AmberTools `sander`.
+- A Li/Merz Zn(II) 12-6-4 energy-and-force fixture against `sander`, using a
+  pinned LEPTON-enabled LAMMPS build.
+- Default ParmEd hydrogen-mass-repartitioning checks covering every emitted
+  mass, total-mass conservation, and TIP3P SHAKE initialization reported by
+  LAMMPS.
 - The first internal package-split boundary for force-field model objects and
   topology scaling analysis, preserving the public CLI and Python API.
-
 - AMBER-family conversion with topology-derived SCEE/SCNB 1-4 scaling and
   explicit fail-closed boundaries.
 - Exact non-covalent GAFF2/GLYCAM mixed scaling using repeated LAMMPS
@@ -32,6 +36,8 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
 
 ### Changed
 
+- Uniform-system output now selects AMBER's Lorentz-Berthelot mixing rule
+  explicitly.
 - Nonbonded epsilon and sigma values now derive from the full-precision AMBER
   A/B coefficient arrays instead of four-decimal formatted diagnostic text.
 - Atom types with otherwise identical parameters are separated when their
@@ -86,6 +92,7 @@ All notable changes to AMBER2LAMMPS are documented here. The project follows
   conversion to LAMMPS data and parameter files.
 - Initial regression tests and packaging metadata.
 
-[Unreleased]: https://github.com/askforarun/AMBER2LAMMPS/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/askforarun/AMBER2LAMMPS/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/askforarun/AMBER2LAMMPS/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/askforarun/AMBER2LAMMPS/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/askforarun/AMBER2LAMMPS/releases/tag/v1.0.0

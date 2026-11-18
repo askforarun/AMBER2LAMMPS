@@ -4,9 +4,9 @@ authors:
 - family-names: "Sridhar"
   given-names: "Arun"
 title: "AMBER2LAMMPS: Validated conversion of AMBER-family topologies to LAMMPS"
-version: 1.1.0
+version: 1.2.0
 doi: 10.5281/zenodo.18114886
-date-released: 2026-11-15
+date-released: 2026-11-18
 url: "https://github.com/askforarun/AMBER2LAMMPS"
 abstract: "A validation-first framework for translating fully parameterized AMBER-family systems to LAMMPS. It combines energy-and-force validation against AMBER sander, machine-readable provenance, fail-closed scientific checks, and a bounded MCP interface that returns compact decision-relevant summaries while retaining large molecular artifacts on disk."
 license: MIT
@@ -28,6 +28,6 @@ references:
   authors:
   - family-names: "Sridhar"
     given-names: "Arun"
-  year: 2025
+  year: 2026
   doi: 10.5281/zenodo.18114886
   url: "https://github.com/askforarun/AMBER2LAMMPS"
