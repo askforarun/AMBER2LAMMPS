@@ -2,9 +2,14 @@
   "reference": {
     "ambertools": "25",
     "system": "HMR ACE-ALA-NME with 380 TIP3P waters and NaCl",
+    "hmr_policy": {
+      "hydrogen_mass_dalton": 3.024,
+      "repartition_water": false
+    },
     "changed_atom_masses": 18,
     "total_mass_dalton": 7048.696,
     "shake_water_count": 380,
+    "shake_atom_count": 1140,
     "observed_differences": {
       "bond_energy_kcal_per_mol": 0.0000352,
       "angle_energy_kcal_per_mol": 0.0000211,

@@ -46,6 +46,18 @@ def section_records(path, name, next_names):
     return [line.split() for line in lines[start + 1:end] if line.strip()]
 
 
+def header_count(path, label):
+    pattern = re.compile(rf"^\s*(\d+)\s+{re.escape(label)}\s*$")
+    matches = [
+        pattern.match(line)
+        for line in path.read_text().splitlines()
+        if pattern.match(line)
+    ]
+    if len(matches) != 1:
+        raise ValueError(f"Expected one '{label}' count, found {len(matches)}")
+    return int(matches[0].group(1))
+
+
 def lammps_mass_mapping(data_file):
     masses = {
         int(row[0]): float(row[1])
@@ -128,6 +140,10 @@ def force_statistics():
     header = lines.index("ITEM: ATOMS id fx fy fz")
     rows = np.array([[float(value) for value in line.split()] for line in lines[header + 1:]])
     lammps = rows[np.argsort(rows[:, 0]), 1:]
+    if amber.shape != lammps.shape:
+        raise AssertionError(
+            f"Force array shape mismatch: sander {amber.shape}, LAMMPS {lammps.shape}"
+        )
     difference = amber - lammps
     return float(np.max(np.abs(difference))), float(math.sqrt(np.mean(difference**2)))
 
@@ -165,6 +181,15 @@ def water_type_ids(topology, atom_types, data_file):
     hydrogen_types = {atom_types[atom.idx] for atom in water_atoms if atom.element == 1}
     if len(oxygen_types) != 1 or len(hydrogen_types) != 1:
         raise AssertionError(f"Unexpected water atom types: O={oxygen_types}, H={hydrogen_types}")
+    water_types = oxygen_types | hydrogen_types
+    nonwater_types = {
+        atom_types[atom.idx]
+        for atom in topology.atoms
+        if atom.residue.name != "WAT"
+    }
+    overlap = water_types & nonwater_types
+    if overlap:
+        raise AssertionError(f"Water and non-water atoms share LAMMPS types: {overlap}")
     oxygen_type = oxygen_types.pop()
     hydrogen_type = hydrogen_types.pop()
 
@@ -182,6 +207,14 @@ def water_type_ids(topology, atom_types, data_file):
     if len(oh_types) != 1 or len(hh_types) != 1:
         raise AssertionError(f"Unexpected water bond types: O-H={oh_types}, H-H={hh_types}")
     return oxygen_type, hydrogen_type, oh_types.pop(), hh_types.pop()
+
+
+def shake_counts(output):
+    group_match = re.search(r"^\s*(\d+) atoms in group tip3p\s*$", output, re.MULTILINE)
+    angle_match = re.search(r"^\s*(\d+) = # of frozen angles\s*$", output, re.MULTILINE)
+    if not group_match or not angle_match:
+        raise AssertionError("Could not parse TIP3P group and frozen-angle counts from LAMMPS")
+    return int(group_match.group(1)), int(angle_match.group(1))
 
 
 def main():
@@ -212,6 +245,20 @@ def main():
     )
     changed, total_mass, _, atom_types = verify_masses(original, hmr, WORK / "system.data")
     reference_metadata = EXPECTED["reference"]
+    hmr_policy = reference_metadata["hmr_policy"]
+    peptide_hydrogen_masses = {
+        round(atom.mass, 6)
+        for atom in hmr.atoms
+        if atom.element == 1 and atom.residue.name != "WAT"
+    }
+    expected_hydrogen_mass = hmr_policy["hydrogen_mass_dalton"]
+    if peptide_hydrogen_masses != {expected_hydrogen_mass}:
+        raise AssertionError(
+            f"Expected peptide hydrogen mass {expected_hydrogen_mass}, "
+            f"got {peptide_hydrogen_masses}"
+        )
+    if hmr_policy["repartition_water"]:
+        raise AssertionError("This fixture requires repartition_water=false")
     if changed != reference_metadata["changed_atom_masses"]:
         raise AssertionError(
             f"Expected {reference_metadata['changed_atom_masses']} changed masses, got {changed}"
@@ -248,9 +295,7 @@ def main():
     oxygen_type, hydrogen_type, oh_bond_type, hh_bond_type = water_type_ids(
         hmr, atom_types, WORK / "system.data"
     )
-    angle_rows = section_records(WORK / "system.data", "Angles", {"Dihedrals"})
-    existing_angle_types = [int(row[1]) for row in angle_rows]
-    water_angle_type = max(existing_angle_types, default=0) + 1
+    water_angle_type = header_count(WORK / "system.data", "angle types") + 1
     water_count = prepare(
         WORK / "system.data", WORK / "system.parm",
         WORK / "system_shake.data", WORK / "system_shake.parm",
@@ -266,12 +311,30 @@ def main():
         WORK / "system_shake.input", "system_shake.data", "system_shake.parm",
         shake=(oxygen_type, hydrogen_type, oh_bond_type, water_angle_type),
     )
-    run([lammps, "-in", "system_shake.input", "-log", "none"], cwd=WORK)
+    shake_output = run([lammps, "-in", "system_shake.input", "-log", "none"], cwd=WORK)
+    group_count, frozen_angle_count = shake_counts(shake_output)
+    expected_group_count = reference_metadata["shake_atom_count"]
+    if group_count != expected_group_count or frozen_angle_count != water_count:
+        raise AssertionError(
+            "LAMMPS SHAKE count mismatch: "
+            f"group={group_count} (expected {expected_group_count}), "
+            f"frozen angles={frozen_angle_count} (expected {water_count})"
+        )
+    shake_energy = lammps_energies(shake_output)
+    for component in ("vdw", "coulomb"):
+        if abs(shake_energy[component] - candidate[component]) > 1.0e-7:
+            raise AssertionError(
+                f"SHAKE topology changed {component} energy: "
+                f"{candidate[component]} -> {shake_energy[component]}"
+            )
 
     print(f"HMR changed {changed} atom masses; total mass preserved at {total_mass:.6f} Da.")
     print(f"Force max difference: {force_max:.9f} kcal/mol/Angstrom")
     print(f"Force RMSE:           {force_rmse:.9f} kcal/mol/Angstrom")
-    print(f"LAMMPS SHAKE initialized for {water_count} TIP3P waters.")
+    print(
+        f"LAMMPS reported {group_count} TIP3P atoms and "
+        f"{frozen_angle_count} frozen water angles."
+    )
     if failures:
         raise AssertionError("HMR/SHAKE validation failed:\n" + "\n".join(failures))
     print("HMR mass, sander energy/force, and LAMMPS SHAKE validation passed.")

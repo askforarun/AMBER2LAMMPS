@@ -684,10 +684,11 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 
 The required GitHub Actions reference check uses AmberTools **`sander`** as the
 AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 +
-GLYCAM mixture, the ff14SB/TIP3P/NaCl system, and a Li/Merz Zn(II) 12-6-4
-TIP3P system. The HMR variant additionally checks per-atom masses, total-mass
-preservation, and TIP3P SHAKE initialization. CI runs each engine on identical
-coordinates and cells and
+GLYCAM mixture, the ff14SB + GAFF2 protein-ligand system, the
+ff14SB/TIP3P/NaCl system, and a Li/Merz Zn(II) 12-6-4 TIP3P system. The HMR
+variant additionally checks per-atom masses, total-mass preservation, and
+TIP3P water SHAKE initialization after fixture preparation. CI runs each
+engine on identical coordinates and cells and
 compares bonded, van der Waals, electrostatic and total energies plus every
 Cartesian force component. Complete runnable fixtures and explicit tolerances
 are in [`validation/glycam_glucose/`](validation/glycam_glucose/README.md),

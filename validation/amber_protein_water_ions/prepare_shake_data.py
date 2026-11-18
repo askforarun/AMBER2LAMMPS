@@ -32,10 +32,19 @@ def replace_header_count(lines, label, value):
     lines[matches[0]] = f"{value} {label} \n"
 
 
+def header_count(lines, label):
+    pattern = re.compile(rf"^\s*(\d+)\s+{re.escape(label)}\s*$")
+    matches = [pattern.match(line) for line in lines if pattern.match(line)]
+    if len(matches) != 1:
+        raise ValueError(f"Expected one '{label}' count, found {len(matches)}")
+    return int(matches[0].group(1))
+
+
 def prepare(data_input, parameters_input, data_output, parameters_output,
             oxygen_type=11, hydrogen_type=12, oh_bond_type=8, hh_bond_type=9,
             water_angle_type=12, oh_distance=0.9572, hh_distance=1.5136):
     lines = Path(data_input).read_text().splitlines(keepends=True)
+    declared_angle_types = header_count(lines, "angle types")
     atoms_at = section_index(lines, "Atoms")
     bonds_at = section_index(lines, "Bonds")
     angles_at = section_index(lines, "Angles")
@@ -93,12 +102,25 @@ def prepare(data_input, parameters_input, data_output, parameters_output,
     output += lines[dihedrals_at:]
     replace_header_count(output, "bonds", len(retained_bonds))
     replace_header_count(output, "angles", len(angles) + len(water_angles))
-    replace_header_count(output, "angle types", max(11, water_angle_type))
+    replace_header_count(
+        output, "bond types",
+        max((bond_type for bond_type, _, _ in retained_bonds), default=0),
+    )
+    replace_header_count(output, "angle types", max(declared_angle_types, water_angle_type))
     Path(data_output).write_text("".join(output))
 
     cosine = (2.0 * oh_distance**2 - hh_distance**2) / (2.0 * oh_distance**2)
     angle_degrees = math.degrees(math.acos(cosine))
     parameters = Path(parameters_input).read_text()
+    parameters, removed_coefficients = re.subn(
+        rf"^\s*bond_coeff\s+{hh_bond_type}(?:\s|$).*\n?",
+        "", parameters, flags=re.MULTILINE,
+    )
+    if removed_coefficients != 1:
+        raise ValueError(
+            f"Expected one bond_coeff for removed H-H type {hh_bond_type}, "
+            f"found {removed_coefficients}"
+        )
     parameters += (
         "\n# SHAKE representation of AMBER three-bond TIP3P; K=0 because fix shake constrains it\n"
         f"angle_coeff {water_angle_type} 0.0000 {angle_degrees:.6f}  # HW-OW-HW\n"

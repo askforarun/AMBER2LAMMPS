@@ -341,8 +341,14 @@ class Tip3pShakePreparationTests(ConversionTestCase):
         self.assertEqual(
             sum(line.split()[1] == "12" for line in sections["Angles"]), 380
         )
+        with open("shake.data") as stream:
+            data_text = stream.read()
+        self.assertRegex(data_text, r"(?m)^8 bond types\s*$")
+        self.assertRegex(data_text, r"(?m)^12 angle types\s*$")
         with open("shake.parm") as stream:
-            self.assertIn("angle_coeff 12 0.0000 104.490", stream.read())
+            parameter_text = stream.read()
+        self.assertNotRegex(parameter_text, r"(?m)^\s*bond_coeff\s+9(?:\s|$)")
+        self.assertIn("angle_coeff 12 0.0000 104.490", parameter_text)
 
 
 class AmberFamilyScalingTests(ConversionTestCase):

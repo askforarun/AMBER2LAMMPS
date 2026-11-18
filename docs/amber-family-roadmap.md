@@ -26,8 +26,9 @@ behavior.
 4. Validate pure GAFF2, pure GLYCAM, pure protein, protein–ligand,
    protein–carbohydrate, GAFF2–GLYCAM, and three-family mixtures.
 5. Add explicit solvent, ions, periodic cells, and HMR variants. (TIP3P,
-   Na+/Cl-, an orthorhombic cell, HMR mass mapping, and TIP3P SHAKE
-   initialization are validated.)
+   Na+/Cl-, an orthorhombic cell, default ParmEd HMR mass mapping, and TIP3P
+   water SHAKE initialization after fixture preparation are validated. Solute
+   X-H constraints and HMR dynamics remain untested.)
 6. Compare AMBER and LAMMPS bonded terms, van der Waals, direct and reciprocal
    electrostatics, total potential energy, and per-atom forces in CI.
 7. Treat covalent protein–GLYCAM and GAFF2–GLYCAM linkages as a separate
