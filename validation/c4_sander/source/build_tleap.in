@@ -1,0 +1,10 @@
+source leaprc.water.tip3p
+loadamberparams frcmod.ions234lm_1264_tip3p
+
+system = sequence { ZN }
+solvatebox system TIP3PBOX 10.0
+addions system Cl- 2
+
+saveamberparm system system.prmtop system.rst7
+savepdb system system.pdb
+quit

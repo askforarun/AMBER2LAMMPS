@@ -224,6 +224,14 @@ jobs:
           python validation/c4_lepton/validate.py \
             --lammps lammps-build/lmp
 
+      - name: Validate 12-6-4 C4 energies and forces against sander
+        shell: micromamba-shell {0}
+        run: |
+          set -euo pipefail
+          python validation/c4_sander/validate_sander.py \
+            --sander "$CONDA_PREFIX/bin/sander" \
+            --lammps lammps-build/lmp
+
   # Single stable check name for branch protection, independent of the matrix.
   ci-passed:
     name: CI passed

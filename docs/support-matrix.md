@@ -28,7 +28,7 @@ independent AMBER engine.
 | Uniform SCEE/SCNB profile | **Validated** for GLYCAM06j-1 and ff14SB | Active proper-dihedral values are extracted from the topology and emitted as `special_bonds` |
 | Lorentz-Berthelot LJ mixing | **Validated** in the mixed fixture | Explicit like-like and cross-family energy/force comparison |
 | AMBER off-diagonal A/B overrides | Regression-tested | Detected and emitted as explicit I-J coefficients |
-| 12-6-4 C4 terms | Implemented for one parameterized topology | `hybrid/overlay` + Lepton output and unit tests; multiple topology files fail closed because cross-topology C4 terms are undefined; requires LAMMPS LEPTON |
+| 12-6-4 C4 terms | **Validated** for Zn(II) in periodic TIP3P water | Li/Merz Zn(II) 12-6-4 energy and all Cartesian forces compared with `sander` in `validation/c4_sander/`; multiple topology files fail closed because cross-topology C4 terms are undefined; requires LAMMPS LEPTON |
 | Mixed SCEE/SCNB plus 12-6-4 | **Unsupported** | Fails before output because the combined representation is not yet validated |
 | Hydrogen mass repartitioning | Regression-tested | Per-atom mass variants and unchanged LJ parameters are tested |
 | Orthorhombic periodic `CRYST1` cells | **Validated** in the mixed fixture | Same 30 Angstrom cell used by `sander` and LAMMPS |
