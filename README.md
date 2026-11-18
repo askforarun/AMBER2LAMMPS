@@ -85,9 +85,9 @@ distribution under the MIT License.
 AMBER2LAMMPS targets reusable conversion of classical, fixed-charge
 AMBER-family molecular models; it is not a generic converter for unrelated
 LAMMPS potentials. Current references include a heterogeneous GAFF2 + GLYCAM
-system and an ff14SB peptide in explicit TIP3P water with Na+/Cl-. Both are
-compared directly with AmberTools `sander` for energy components and all
-Cartesian forces.
+system, an ff14SB peptide in explicit TIP3P water with Na+/Cl-, and a Li/Merz
+Zn(II) 12-6-4 model in TIP3P water. They are compared directly with AmberTools
+`sander` for energy components and all Cartesian forces.
 
 - [Supported-system and validation matrix](docs/support-matrix.md)
 - [Scientific mapping and extension model](docs/scientific-design.md)
@@ -95,6 +95,7 @@ Cartesian forces.
 - [Standalone GLYCAM06j-1 `sander` validation](validation/glycam_glucose/README.md)
 - [ff14SB + GAFF2 protein-ligand `sander` validation](validation/protein_ligand/README.md)
 - [ff14SB/TIP3P/ion `sander` validation](validation/amber_protein_water_ions/README.md)
+- [Zn(II)/TIP3P 12-6-4 `sander` validation](validation/c4_sander/README.md)
 - [AMBER-family development roadmap](docs/amber-family-roadmap.md)
 - [Research-use and adoption record](docs/research-use.md)
 - [Contribution requirements](CONTRIBUTING.md)
@@ -681,13 +682,15 @@ subprocess.run("lmp < test_mixed_system.in", shell=True)
 ## Validation with sander and InterMol
 
 The required GitHub Actions reference check uses AmberTools **`sander`** as the
-AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 + GLYCAM mixture, and the
-ff14SB/TIP3P/NaCl system, runs each engine on identical coordinates and cells,
-and compares bonded, van der Waals, electrostatic and total energies plus every
+AMBER authority. CI regenerates standalone GLYCAM06j-1 glucose, the GAFF2 +
+GLYCAM mixture, the ff14SB/TIP3P/NaCl system, and a Li/Merz Zn(II) 12-6-4
+TIP3P system. It runs each engine on identical coordinates and cells and
+compares bonded, van der Waals, electrostatic and total energies plus every
 Cartesian force component. Complete runnable fixtures and explicit tolerances
 are in [`validation/glycam_glucose/`](validation/glycam_glucose/README.md),
-[`validation/amber_family_mix/`](validation/amber_family_mix/README.md), and
-[`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md).
+[`validation/amber_family_mix/`](validation/amber_family_mix/README.md),
+[`validation/amber_protein_water_ions/`](validation/amber_protein_water_ions/README.md),
+and [`validation/c4_sander/`](validation/c4_sander/README.md).
 
 InterMol remains a useful secondary converter-to-converter cross-check and its
 reproducible epon bundle is retained, but it is no longer the required

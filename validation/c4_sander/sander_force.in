@@ -1,0 +1,27 @@
+Zn(II) 12-6-4 with TIP3P water and chloride force reference
+&cntrl
+  imin=0,
+  nstlim=1,
+  dt=0.000001,
+  ntb=1,
+  cut=9.0,
+  ntpr=1,
+  ntwf=1,
+  ntwx=0,
+  ntwr=1,
+  ntt=0,
+  ntc=1,
+  ntf=1,
+  ntx=1,
+  iwrap=0,
+  lj1264=1,
+/
+&ewald
+  dsum_tol=1.0e-8,
+  nfft1=96,
+  nfft2=96,
+  nfft3=96,
+  order=6,
+  ew_coeff=0.42001,
+  vdwmeth=0,
+/

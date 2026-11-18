@@ -1,0 +1,5 @@
+parm system.prmtop
+loadRestrt system.rst7
+add12_6_4 :ZN watermodel TIP3P
+outparm system_1264.prmtop system_1264.rst7
+quit

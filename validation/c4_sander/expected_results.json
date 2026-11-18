@@ -1,0 +1,27 @@
+{
+  "reference": {
+    "ambertools": "25",
+    "lammps_commit": "26e5f79",
+    "system": "Li/Merz Zn(II) 12-6-4, 339 TIP3P waters, and two chloride counterions",
+    "observed_differences": {
+      "bond_energy_kcal_per_mol": 0.0000173,
+      "angle_energy_kcal_per_mol": 0.0,
+      "dihedral_energy_kcal_per_mol": 0.0,
+      "vdw_energy_kcal_per_mol": 0.0000100,
+      "coulomb_energy_kcal_per_mol": 0.0053000,
+      "potential_energy_kcal_per_mol": 0.0053000,
+      "force_max_kcal_per_mol_angstrom": 0.000076044,
+      "force_rmse_kcal_per_mol_angstrom": 0.000019213
+    }
+  },
+  "tolerances": {
+    "bond_energy_kcal_per_mol": 0.0001,
+    "angle_energy_kcal_per_mol": 0.0001,
+    "dihedral_energy_kcal_per_mol": 0.0001,
+    "vdw_energy_kcal_per_mol": 0.0001,
+    "coulomb_energy_kcal_per_mol": 0.008,
+    "potential_energy_kcal_per_mol": 0.01,
+    "force_max_kcal_per_mol_angstrom": 0.0002,
+    "force_rmse_kcal_per_mol_angstrom": 0.00005
+  }
+}

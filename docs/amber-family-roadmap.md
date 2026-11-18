@@ -43,7 +43,9 @@ and all Cartesian forces. With matched PME settings and Coulomb conversion
 factors, total energy differs by 0.00010 kcal/mol, maximum force-component
 difference is 0.000543 kcal/mol/Angstrom, and force RMSE is 0.0000817
 kcal/mol/Angstrom. Standalone GLYCAM06j-1 glucose is independently validated.
-Mixed scaling with 12-6-4 terms remains fail-closed.
+A periodic Li/Merz Zn(II) 12-6-4 TIP3P system is also validated against
+`sander` energies and forces using LEPTON-enabled LAMMPS. Mixed scaling with
+12-6-4 terms remains fail-closed.
 
 ## Publication target
 
